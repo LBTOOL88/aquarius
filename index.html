@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquarius Countdown</title>
+    <!-- Nhúng font chữ từ Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- BẮT ĐẦU PHẦN CSS --- */
+        body {
+            background-color: #000;
+            /* Thêm một lớp nền mờ ảo giống các vì sao */
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            color: #fff;
+            font-family: 'Orbitron', sans-serif; /* Sử dụng font đã nhúng */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            overflow: hidden; /* Ẩn thanh cuộn */
+        }
+
+        .container {
+            transform: translateY(-50px);
+            animation: fadeIn 2s ease-in-out;
+        }
+
+        .title {
+            font-size: 6rem;
+            color: #00e5ff; /* Màu xanh thiên thanh (cyan) */
+            /* Hiệu ứng tỏa sáng cho chữ */
+            text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 40px #00e5ff, 0 0 60px #00e5ff;
+            margin-bottom: 40px;
+            letter-spacing: 5px;
+            animation: pulse 4s infinite;
+        }
+
+        .countdown {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .time-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Khối hiển thị số (giờ, phút, giây) */
+        .time-block span:first-child {
+            font-size: 4rem;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05); /* Nền trong suốt có viền mờ */
+            border-radius: 10px;
+            min-width: 100px;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .time-block span:first-child:hover {
+            transform: scale(1.05); /* Hiệu ứng phóng to khi di chuột qua */
+        }
+
+        /* Nhãn (Giờ, Phút, Giây) */
+        .label {
+            font-size: 1rem;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        /* Dòng thông báo khi hết giờ */
+        .message {
+            font-size: 3rem;
+            display: none; /* Ẩn ban đầu */
+            color: #ff3b3b;
+            text-shadow: 0 0 10px #ff3b3b;
+            animation: fadeIn 2s;
+        }
+        
+        /* Hiệu ứng xuất hiện */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Hiệu ứng nhấp nháy cho tiêu đề */
+        @keyframes pulse {
+            0% { text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 40px #00e5ff; }
+            50% { text-shadow: 0 0 20px #00e5ff, 0 0 40px #00e5ff, 0 0 80px #00e5ff; }
+            100% { text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 40px #00e5ff; }
+        }
+
+        /* Điều chỉnh cho màn hình nhỏ hơn (responsive) */
+        @media (max-width: 600px) {
+            .title {
+                font-size: 3.5rem;
+            }
+            .countdown {
+                flex-direction: column;
+                gap: 20px;
+            }
+            .time-block span:first-child {
+                font-size: 3rem;
+                min-width: 80px;
+                padding: 15px;
+            }
+        }
+        /* --- KẾT THÚC PHẦN CSS --- */
+    </style>
+</head>
+<body>
+    <!-- --- BẮT ĐẦU PHẦN HTML --- -->
+    <div class="container">
+        <h1 class="title">AQUARIUS</h1>
+        <div id="countdown" class="countdown">
+            <div class="time-block">
+                <span id="hours">00</span>
+                <span class="label">Giờ</span>
+            </div>
+            <div class="time-block">
+                <span id="minutes">00</span>
+                <span class="label">Phút</span>
+            </div>
+            <div class="time-block">
+                <span id="seconds">00</span>
+                <span class="label">Giây</span>
+            </div>
+        </div>
+        <!-- Dòng chữ này sẽ hiện ra khi đếm ngược kết thúc -->
+        <div id="message" class="message"></div>
+    </div>
+    <!-- --- KẾT THÚC PHẦN HTML --- -->
+
+    <script>
+        // --- BẮT ĐẦU PHẦN JAVASCRIPT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Lấy các phần tử HTML để cập nhật nội dung
+            const hoursEl = document.getElementById('hours');
+            const minutesEl = document.getElementById('minutes');
+            const secondsEl = document.getElementById('seconds');
+            const countdownEl = document.getElementById('countdown');
+            const messageEl = document.getElementById('message');
+
+            // --- THAY ĐỔI LOGIC TẠI ĐÂY ---
+            // Tạo một đối tượng ngày cho thời gian mục tiêu
+            let targetDate = new Date();
+            // Đặt giờ mục tiêu là 19:10:00 (7:10 PM) cho ngày hôm nay
+            targetDate.setHours(19, 10, 0, 0);
+
+            // Nếu bây giờ đã qua 7:10 PM hôm nay, đặt mục tiêu là 7:10 PM ngày mai
+            if (new Date().getTime() > targetDate.getTime()) {
+                targetDate.setDate(targetDate.getDate() + 1);
+            }
+            
+            // Lấy mốc thời gian kết thúc dưới dạng mili giây
+            const countdownEndDate = targetDate.getTime();
+            // --- KẾT THÚC THAY ĐỔI LOGIC ---
+
+            // Hàm cập nhật đồng hồ
+            const updateCountdown = () => {
+                const now = new Date().getTime();
+                const distance = countdownEndDate - now;
+
+                // Nếu thời gian đếm ngược đã kết thúc
+                if (distance < 0) {
+                    clearInterval(interval); // Dừng việc cập nhật
+                    countdownEl.style.display = 'none'; // Ẩn đồng hồ
+                    messageEl.textContent = 'HẾT GIỜ!'; // Hiển thị thông báo
+                    messageEl.style.display = 'block';
+                    // Đặt lại đồng hồ cho ngày tiếp theo (tùy chọn)
+                    // location.reload(); 
+                    return; // Kết thúc hàm
+                }
+
+                // Tính toán giờ, phút, giây còn lại
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                // Hiển thị kết quả lên màn hình
+                // padStart(2, '0') để đảm bảo luôn có 2 chữ số (ví dụ: 09 thay vì 9)
+                hoursEl.textContent = hours.toString().padStart(2, '0');
+                minutesEl.textContent = minutes.toString().padStart(2, '0');
+                secondsEl.textContent = seconds.toString().padStart(2, '0');
+            };
+
+            // Gọi hàm updateCountdown mỗi giây (1000 mili giây)
+            const interval = setInterval(updateCountdown, 1000);
+
+            // Chạy hàm lần đầu tiên ngay khi tải trang để không bị trễ 1 giây
+            updateCountdown();
+        });
+        // --- KẾT THÚC PHẦN JAVASCRIPT ---
+    </script>
+</body>
+</html>
