@@ -12,13 +12,13 @@
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+    <!-- UPDATE: Firebase SDK updated to v10.12.2 (compat version to maintain syntax) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 
     <!-- Tone.js for Sound Effects -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
@@ -28,10 +28,9 @@
             --retro-green: #33ff33;
             --dark-bg: #0a0a0a;
         }
-        /* CHANGE: Ensure body and html take full height for better layout control */
         html, body, #root {
             height: 100%;
-            overflow: hidden; /* Prevent double scrollbars */
+            overflow: hidden;
         }
         body {
             font-family: 'VT323', monospace;
@@ -310,9 +309,15 @@
                 const processedUsername = username.trim().toLowerCase();
                 if (!processedUsername || !password) { setError("LỖI: THIẾU TÍN HIỆU"); setIsLoading(false); return; }
                 const email = processedUsername + DUMMY_DOMAIN;
-                try { await auth.signInWithEmailAndPassword(email, password); } 
-                catch (err) { setError("LỖI: XÁC THỰC THẤT BẠI"); } 
-                finally { setIsLoading(false); }
+                try { 
+                    await auth.signInWithEmailAndPassword(email, password); 
+                } 
+                catch (err) { 
+                    setError("LỖI: XÁC THỰC THẤT BẠI"); 
+                } 
+                finally { 
+                    setIsLoading(false); 
+                }
             };
             
             const handleSignup = async () => {
@@ -322,16 +327,14 @@
                 if (password.length < 6) { setError("LỖI: MẬT KHẨU QUÁ NGẮN (TỐI THIỂU 6 KÝ TỰ)"); setIsLoading(false); return; }
                 
                 try {
-                    const usersRef = db.collection("users");
-                    const existingUserQuery = await usersRef.where("username", "==", processedUsername).get();
-                    if (!existingUserQuery.empty) {
-                        setError("LỖI: MÃ HIỆU PILOT ĐÃ TỒN TẠI");
-                        setIsLoading(false);
-                        return;
-                    }
+                    // FIX: Removed the insecure and problematic Firestore query for username check.
+                    // The `auth/email-already-in-use` error from `createUserWithEmailAndPassword`
+                    // is the correct and secure way to handle existing users.
 
                     const email = processedUsername + DUMMY_DOMAIN;
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    
+                    // This part will now work correctly with the new Security Rules.
                     await db.collection("users").doc(userCredential.user.uid).set({
                         uid: userCredential.user.uid,
                         username: processedUsername,
@@ -339,10 +342,18 @@
                         energy: 7,
                         hasSubmittedInfo: false,
                     }, { merge: true });
+
                 } catch (err) {
-                    if (err.code === 'auth/email-already-in-use') { setError("LỖI: MÃ HIỆU PILOT ĐÃ TỒN TẠI"); } 
-                    else { setError("LỖI: KHỞI TẠO PILOT THẤT BẠI"); }
-                } finally { setIsLoading(false); }
+                    if (err.code === 'auth/email-already-in-use') { 
+                        setError("LỖI: MÃ HIỆU PILOT ĐÃ TỒN TẠI"); 
+                    } else { 
+                        // This will now correctly show for other errors, e.g., network issues.
+                        setError("LỖI: KHỞI TẠO PILOT THẤT BẠI"); 
+                        console.error("Signup Error:", err); // Added for better debugging
+                    }
+                } finally { 
+                    setIsLoading(false); 
+                }
             };
 
             if (booting) {
@@ -467,9 +478,7 @@
             };
 
             return (
-                // CHANGE: Use h-full and flex for full height layout
                 <div className="flex w-full h-full p-1 sm:p-2">
-                    {/* CHANGE: Added responsive classes to handle mobile view switching */}
                     <aside className={`w-full md:w-1/3 lg:w-1/4 retro-container flex flex-col ${currentChat ? 'hidden md:flex' : 'flex'}`}>
                         <header className="retro-header flex justify-between items-center flex-shrink-0">
                             <h2 className="text-base sm:text-xl glitch-text">ĐIỀU KHIỂN</h2>
@@ -487,12 +496,10 @@
                             ))}
                         </div>
                     </aside>
-                    {/* CHANGE: Added responsive classes to handle mobile view switching */}
                     <section className={`w-full md:w-2/3 lg:w-3/4 flex flex-col retro-container ml-0 md:ml-2 ${currentChat ? 'flex' : 'hidden md:flex'}`}>
                         {currentChat ? (
                             <React.Fragment>
                                 <header className="retro-header flex items-center">
-                                    {/* CHANGE: Back button is now more prominent and only shows on mobile */}
                                     <button onClick={() => setCurrentChat(null)} className="md:hidden mr-4 retro-button text-sm p-2">&lt; BACK</button>
                                     > KÊNH: {currentChat.username}
                                 </header>
@@ -508,7 +515,6 @@
                                         <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} className="flex-1 retro-input text-sm" placeholder="> GỬI BÀN..." />
                                         <button onClick={handleSendTableMessage} className="ml-2 retro-button border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black text-sm">GỬI BÀN</button>
                                     </div>
-                                    {/* CHANGE: Grid layout for quick replies is responsive */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                                         <button onClick={() => handleQuickReply('NHÀ CON')} className="retro-button text-xs sm:text-sm">NHÀ CON</button>
                                         <button onClick={() => handleQuickReply('NHÀ CÁI')} className="retro-button text-xs sm:text-sm">NHÀ CÁI</button>
@@ -703,9 +709,7 @@
             const username = currentUser.email.split('@')[0];
 
             return (
-                 // CHANGE: Use h-full to make the main container take up the full screen height
                  <div className={`h-full p-2 sm:p-4 ${isAnnouncing ? 'yellow-alert-flash' : ''}`}>
-                    {/* CHANGE: Added flex, flex-col, and h-full to ensure the layout fills the container */}
                     <div className="w-full h-full flex flex-col retro-container crt-effect">
                         <header className="retro-header flex justify-between items-center flex-shrink-0">
                             <h2 className="text-base sm:text-xl glitch-text">AQUARIUS TERMINAL</h2>
@@ -715,7 +719,6 @@
                             <p className="truncate text-sm sm:text-base">> PILOT: {username}</p>
                             <EnergyBar value={energy} />
                         </div>
-                        {/* CHANGE: Added flex-grow to make the message list take up available space */}
                         <main ref={messagesListRef} className="flex-grow p-2 sm:p-4 overflow-y-auto">
                             {messages.map((msg) => (
                                 <div key={msg.id} className="mb-2 text-sm sm:text-base">
@@ -836,7 +839,6 @@
             };
             
             return (
-                // CHANGE: Use h-full to ensure the main div takes full height
                 <div className="h-full">
                     <Starfield />
                     {isLoading ? (
