@@ -7,16 +7,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
     
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
 
+    <!-- Tone.js for Sound Effects -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 
     <style>
@@ -24,12 +28,16 @@
             --retro-green: #33ff33;
             --dark-bg: #0a0a0a;
         }
+        /* CHANGE: Ensure body and html take full height for better layout control */
+        html, body, #root {
+            height: 100%;
+            overflow: hidden; /* Prevent double scrollbars */
+        }
         body {
             font-family: 'VT323', monospace;
             background-color: var(--dark-bg);
             color: var(--retro-green);
             text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
-            overflow: hidden;
         }
         #starfield-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
@@ -57,6 +65,7 @@
         .retro-button {
             background-color: transparent; border: 1px solid var(--retro-green); color: var(--retro-green);
             padding: 10px 15px; border-radius: 0; transition: all 0.2s; cursor: pointer;
+            text-shadow: inherit;
         }
         .retro-button:hover:not(:disabled) {
             background-color: var(--retro-green); color: var(--dark-bg); text-shadow: none;
@@ -73,9 +82,8 @@
         .blessing-glow {
              animation: glowing-blessing 2s ease-in-out infinite;
         }
-        /* NEW: Yellow alert flash for user view */
         .yellow-alert-flash {
-            animation: yellow-flash 1s 2; /* Flash twice */
+            animation: yellow-flash 1s 2;
         }
         
         @keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 4px; } }
@@ -88,7 +96,6 @@
             50% { box-shadow: 0 0 20px var(--retro-green), 0 0 25px var(--retro-green); }
             100% { box-shadow: 0 0 5px var(--retro-green); }
         }
-        /* NEW: Keyframes for yellow flash */
         @keyframes yellow-flash {
             0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); }
             50% { box-shadow: 0 0 40px 20px rgba(255, 255, 0, 0.6), inset 0 0 25px rgba(255, 255, 0, 0.5); }
@@ -120,6 +127,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const rtdb = firebase.database();
+        const functions = firebase.functions();
 
         // --- GAME DATA ---
         const BACARAT_TABLES = ["BACARAT C04", "BACARAT C05", "BACARAT C06", "BACARAT C07", "BACARAT C01", "BACARAT C02", "BACARAT C03", "BACARAT C08", "BACARAT C09", "BACARAT C10", "BACARAT 1", "BACARAT 2", "BACARAT 3", "BACARAT 4", "BACARAT 5", "BACARAT 7", "BACARAT 8", "BACARAT 9", "BACARAT 10", "BACARAT C11", "BACARAT C12", "BACARAT C13", "BACARAT C15"];
@@ -243,7 +251,7 @@
                         <p className="text-white text-2xl font-bold">{msg.text}</p>
                     </div>
                 );
-                case 'blessing': return ( // MODIFIED: Blessing message format
+                case 'blessing': return (
                     <div className="border-2 border-green-400 p-4 mt-1 blessing-glow text-center">
                         <p className="text-2xl glitch-text text-green-300 uppercase">Lời Ban Phước</p>
                         <div className="mt-4 text-left space-y-2">
@@ -339,9 +347,9 @@
 
             if (booting) {
                 return (
-                    <div className="min-h-screen bg-black flex items-center justify-center">
-                        <div className="w-full max-w-2xl p-4">
-                            {bootLines.map((line, i) => <p key={i} className="text-lg">> {line}</p>)}
+                    <div className="h-full bg-black flex items-center justify-center p-4">
+                        <div className="w-full max-w-2xl">
+                            {bootLines.map((line, i) => <p key={i} className="text-base sm:text-lg">> {line}</p>)}
                             <span className="typing-cursor"></span>
                         </div>
                     </div>
@@ -349,21 +357,21 @@
             }
 
             return (
-                 <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{animation: 'fadeIn 1s forwards'}}>
-                    <div className="w-full max-w-md p-4 sm:p-8 space-y-4 retro-container">
+                 <div className="h-full flex flex-col items-center justify-center p-4" style={{animation: 'fadeIn 1s forwards'}}>
+                    <div className="w-full max-w-md p-6 sm:p-8 space-y-4 retro-container">
                         <h2 className="text-3xl sm:text-4xl text-center glitch-text">AQUARIUS OS</h2>
-                        <p className="text-center text-md sm:text-lg">> YÊU CẦU XÁC THỰC PILOT</p>
+                        <p className="text-center text-base sm:text-lg">> YÊU CẦU XÁC THỰC PILOT</p>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-md sm:text-lg">> MÃ HIỆU PILOT:</label>
+                                <label className="text-base sm:text-lg">> MÃ HIỆU PILOT:</label>
                                 <input value={username} onChange={e => setUsername(e.target.value)} type="text" required className="w-full mt-1 retro-input" />
                             </div>
                             <div>
-                                <label className="text-md sm:text-lg">> MẬT KHẨU:</label>
+                                <label className="text-base sm:text-lg">> MẬT KHẨU:</label>
                                 <input value={password} onChange={e => setPassword(e.target.value)} type="password" required className="w-full mt-1 retro-input" />
                             </div>
-                            {error && <div className="text-md sm:text-lg text-center py-2 bg-red-900 bg-opacity-50 border border-red-500">{error}<span className="typing-cursor"></span></div>}
-                            <div className="flex items-center space-x-4">
+                            {error && <div className="text-base sm:text-lg text-center py-2 bg-red-900 bg-opacity-50 border border-red-500">{error}<span className="typing-cursor"></span></div>}
+                            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                 <button onClick={handleLogin} disabled={isLoading} className="w-full retro-button">{isLoading ? 'ĐANG KẾT NỐI...' : 'KẾT NỐI'}</button>
                                 <button onClick={handleSignup} disabled={isLoading} className="w-full retro-button">KHỞI TẠO</button>
                             </div>
@@ -459,29 +467,33 @@
             };
 
             return (
-                <div className="flex w-full h-screen p-1 sm:p-2 md:p-4">
-                    <aside className={`w-full md:w-1/3 lg:w-1/4 retro-container flex-col ${currentChat ? 'hidden md:flex' : 'flex'}`}>
+                // CHANGE: Use h-full and flex for full height layout
+                <div className="flex w-full h-full p-1 sm:p-2">
+                    {/* CHANGE: Added responsive classes to handle mobile view switching */}
+                    <aside className={`w-full md:w-1/3 lg:w-1/4 retro-container flex flex-col ${currentChat ? 'hidden md:flex' : 'flex'}`}>
                         <header className="retro-header flex justify-between items-center flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl glitch-text">ĐIỀU KHIỂN</h2>
+                            <h2 className="text-base sm:text-xl glitch-text">ĐIỀU KHIỂN</h2>
                             <button onClick={onLogout} className="text-xs retro-button">ĐĂNG XUẤT</button>
                         </header>
                          <div className="p-2 border-b border-green-900">
-                            <p className="text-md sm:text-lg">TRẠNG THÁI</p>
+                            <p className="text-sm sm:text-lg">TRẠNG THÁI</p>
                             <AsciiChart value={onlineCount} total={conversations.length} />
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {conversations.map(conv => (
                                 <div key={conv.id} onClick={() => loadConversation(conv)} className={`p-3 border-b border-green-900 cursor-pointer hover:bg-green-900 bg-opacity-50 ${currentChat?.id === conv.id ? 'bg-green-800' : ''}`}>
-                                    <p className="font-semibold text-md sm:text-lg truncate">> {conv.username || 'Unknown'}</p>
+                                    <p className="font-semibold text-sm sm:text-lg truncate">> {conv.username || 'Unknown'}</p>
                                 </div>
                             ))}
                         </div>
                     </aside>
-                    <section className={`w-full md:w-2/3 lg:w-3/4 flex-col retro-container ml-0 md:ml-2 ${currentChat ? 'flex' : 'hidden md:flex'}`}>
+                    {/* CHANGE: Added responsive classes to handle mobile view switching */}
+                    <section className={`w-full md:w-2/3 lg:w-3/4 flex flex-col retro-container ml-0 md:ml-2 ${currentChat ? 'flex' : 'hidden md:flex'}`}>
                         {currentChat ? (
                             <React.Fragment>
                                 <header className="retro-header flex items-center">
-                                    <button onClick={() => setCurrentChat(null)} className="md:hidden mr-4 retro-button text-sm p-2">&lt;</button>
+                                    {/* CHANGE: Back button is now more prominent and only shows on mobile */}
+                                    <button onClick={() => setCurrentChat(null)} className="md:hidden mr-4 retro-button text-sm p-2">&lt; BACK</button>
                                     > KÊNH: {currentChat.username}
                                 </header>
                                 <main ref={messagesListRef} className="flex-1 p-2 sm:p-4 overflow-y-auto">
@@ -496,11 +508,12 @@
                                         <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} className="flex-1 retro-input text-sm" placeholder="> GỬI BÀN..." />
                                         <button onClick={handleSendTableMessage} className="ml-2 retro-button border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black text-sm">GỬI BÀN</button>
                                     </div>
+                                    {/* CHANGE: Grid layout for quick replies is responsive */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-                                        <button onClick={() => handleQuickReply('NHÀ CON')} className="retro-button text-sm">NHÀ CON</button>
-                                        <button onClick={() => handleQuickReply('NHÀ CÁI')} className="retro-button text-sm">NHÀ CÁI</button>
-                                        <button onClick={() => handleQuickReply('LONG BẢO')} className="retro-button text-sm">LONG BẢO</button>
-                                        <button onClick={() => handleQuickReply('XIN VUI LÒNG ĐỢI')} className="retro-button text-sm">XIN VUI LÒNG ĐỢI</button>
+                                        <button onClick={() => handleQuickReply('NHÀ CON')} className="retro-button text-xs sm:text-sm">NHÀ CON</button>
+                                        <button onClick={() => handleQuickReply('NHÀ CÁI')} className="retro-button text-xs sm:text-sm">NHÀ CÁI</button>
+                                        <button onClick={() => handleQuickReply('LONG BẢO')} className="retro-button text-xs sm:text-sm">LONG BẢO</button>
+                                        <button onClick={() => handleQuickReply('XIN VUI LÒNG ĐỢI')} className="retro-button text-xs sm:text-sm">XIN VUI LÒNG ĐỢI</button>
                                     </div>
                                     <div className="flex items-center">
                                         <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSendMessage()} className="flex-1 retro-input" placeholder="> Phản hồi..." />
@@ -509,7 +522,7 @@
                                 </footer>
                             </React.Fragment>
                         ) : (
-                            <div className="flex-1 flex items-center justify-center opacity-50 text-xl">> CHỌN KÊNH LIÊN LẠC</div>
+                            <div className="flex-1 flex items-center justify-center opacity-50 text-xl text-center p-4">> CHỌN KÊNH LIÊN LẠC ĐỂ BẮT ĐẦU</div>
                         )}
                     </section>
                 </div>
@@ -529,7 +542,7 @@
             const [lastBlessingTime, setLastBlessingTime] = useState(null);
             const [showInfoModal, setShowInfoModal] = useState(false);
             const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
-            const [isAnnouncing, setIsAnnouncing] = useState(false); // NEW state for announcement animation
+            const [isAnnouncing, setIsAnnouncing] = useState(false);
             const messagesListRef = useRef(null);
 
             useEffect(() => {
@@ -555,9 +568,8 @@
                             if (latestMsg.senderId !== currentUser.uid) {
                                 if (latestMsg.type === 'table_announcement') {
                                     soundService.playAlert();
-                                    // Trigger the animation
                                     setIsAnnouncing(true);
-                                    setTimeout(() => setIsAnnouncing(false), 2000); // Animation lasts 2 seconds
+                                    setTimeout(() => setIsAnnouncing(false), 2000);
                                 } else {
                                     soundService.playReceive();
                                 }
@@ -679,7 +691,7 @@
                     <div className="w-full border border-green-700 p-1">
                         <div className="flex items-center">
                             <div className="text-xs sm:text-sm mr-2">N.LƯỢNG:</div>
-                            <div className="flex-1 h-4 bg-gray-800">
+                            <div className="flex-1 h-3 sm:h-4 bg-gray-800">
                                 <div className={`h-full ${barColor}`} style={{width: barWidth}}></div>
                             </div>
                             <div className="text-sm ml-2">{value}</div>
@@ -691,19 +703,22 @@
             const username = currentUser.email.split('@')[0];
 
             return (
-                 <div className={`h-screen p-1 sm:p-2 md:p-4 ${isAnnouncing ? 'yellow-alert-flash' : ''}`}>
+                 // CHANGE: Use h-full to make the main container take up the full screen height
+                 <div className={`h-full p-2 sm:p-4 ${isAnnouncing ? 'yellow-alert-flash' : ''}`}>
+                    {/* CHANGE: Added flex, flex-col, and h-full to ensure the layout fills the container */}
                     <div className="w-full h-full flex flex-col retro-container crt-effect">
-                        <header className="retro-header flex justify-between items-center">
-                            <h2 className="text-lg sm:text-xl glitch-text">AQUARIUS TERMINAL</h2>
+                        <header className="retro-header flex justify-between items-center flex-shrink-0">
+                            <h2 className="text-base sm:text-xl glitch-text">AQUARIUS TERMINAL</h2>
                             <button onClick={() => { soundService.playClick(); onLogout(); }} className="text-xs retro-button p-2">NGẮT KẾT NỐI</button>
                         </header>
-                        <div className="p-2 border-b border-green-900">
-                            <p className="truncate">> PILOT: {username}</p>
+                        <div className="p-2 border-b border-green-900 flex-shrink-0">
+                            <p className="truncate text-sm sm:text-base">> PILOT: {username}</p>
                             <EnergyBar value={energy} />
                         </div>
-                        <main ref={messagesListRef} className="flex-1 p-2 sm:p-4 overflow-y-auto">
+                        {/* CHANGE: Added flex-grow to make the message list take up available space */}
+                        <main ref={messagesListRef} className="flex-grow p-2 sm:p-4 overflow-y-auto">
                             {messages.map((msg) => (
-                                <div key={msg.id} className="mb-2">
+                                <div key={msg.id} className="mb-2 text-sm sm:text-base">
                                     <div className={msg.senderId === currentUser.uid ? 'text-cyan-300' : ''}>
                                         {msg.type === 'system' ? '' : <span className="mr-2">{msg.senderId === currentUser.uid ? `<${username}>` : '<AQUARIUS>'}</span>}
                                         <MessageContent msg={msg} />
@@ -711,10 +726,10 @@
                                 </div>
                             ))}
                         </main>
-                        <div className="p-2 border-t border-b border-green-900 flex justify-around items-center space-x-2 relative">
+                        <div className="p-2 border-t border-b border-green-900 flex justify-around items-center space-x-2 relative flex-shrink-0">
                             {cooldownTimeLeft > 0 ? (
-                                <div className="text-center text-xs">
-                                    <p className="opacity-70">HỒI CHIÊU</p>
+                                <div className="text-center">
+                                    <p className="opacity-70 text-xs">HỒI CHIÊU</p>
                                     <p className="text-sm sm:text-lg">{formatTime(cooldownTimeLeft)}</p>
                                 </div>
                             ) : (
@@ -722,7 +737,7 @@
                             )}
                             <button onClick={() => {soundService.playClick(); alert('TÀI KHOẢN CỦA BẠN KHÔNG ĐỦ ĐIỀU KIỆN! HÃY CHƠI ĐỀU VÀ LÊN VIP');}} className="retro-button text-xs sm:text-sm p-2">[ỨNG TIỀN]</button>
                         </div>
-                        <footer className="p-2 border-t border-green-900">
+                        <footer className="p-2 border-t border-green-900 flex-shrink-0">
                             <div className="flex w-full items-center">
                                 <span className="mr-2 text-lg">></span>
                                 <input className="flex-1 retro-input" placeholder="Nhập lệnh..." value={inputMessage} onChange={(e) => {setInputMessage(e.target.value); soundService.playTyping();}} onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleSendMessage())} />
@@ -746,17 +761,17 @@
                         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
                             <div className="p-6 retro-container w-full max-w-sm" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-xl sm:text-2xl glitch-text mb-4">YÊU CẦU KHAI BÁO</h3>
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <div>
-                                        <label className="text-md sm:text-lg">> TÊN TK F168:</label>
+                                        <label className="text-sm sm:text-lg">> TÊN TK F168:</label>
                                         <input value={infoFormData.f168Account} onChange={e => setInfoFormData({...infoFormData, f168Account: e.target.value})} type="text" className="w-full mt-1 retro-input" />
                                     </div>
                                     <div>
-                                        <label className="text-md sm:text-lg">> SỐ VỐN:</label>
+                                        <label className="text-sm sm:text-lg">> SỐ VỐN:</label>
                                         <input value={infoFormData.capital} onChange={e => setInfoFormData({...infoFormData, capital: e.target.value})} type="text" className="w-full mt-1 retro-input" />
                                     </div>
                                      <div>
-                                        <label className="text-md sm:text-lg">> MUỐN LÊN BAO NHIÊU:</label>
+                                        <label className="text-sm sm:text-lg">> MUỐN LÊN BAO NHIÊU:</label>
                                         <input value={infoFormData.target} onChange={e => setInfoFormData({...infoFormData, target: e.target.value})} type="text" className="w-full mt-1 retro-input" />
                                     </div>
                                 </div>
@@ -821,10 +836,11 @@
             };
             
             return (
-                <div>
+                // CHANGE: Use h-full to ensure the main div takes full height
+                <div className="h-full">
                     <Starfield />
                     {isLoading ? (
-                        <div className="min-h-screen bg-black flex items-center justify-center text-2xl animate-pulse"><p>ĐANG KHỞI ĐỘNG HỆ THỐNG...<span className="typing-cursor"></span></p></div>
+                        <div className="h-full bg-black flex items-center justify-center text-xl sm:text-2xl animate-pulse p-4 text-center"><p>ĐANG KHỞI ĐỘNG HỆ THỐNG...<span className="typing-cursor"></span></p></div>
                     ) : !currentUser ? (
                         <LoginScreen />
                     ) : isAdmin ? (
