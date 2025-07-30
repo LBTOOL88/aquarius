@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQUARIUS AI - IMMERSIVE OS v9.4 (Unread Indicator)</title>
+    <title>AQUARIUS AI - IMMERSIVE OS v9.5 (Baccarat Quick Reply)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
     
@@ -79,9 +79,12 @@
         .yellow-alert-flash {
             animation: yellow-flash 1s 2;
         }
-        /* NEW: Style for unread message indicator */
         .unread-indicator {
             animation: pulse-yellow 2s infinite;
+        }
+        /* NEW: Style for baccarat result text */
+        .text-shadow-baccarat {
+             text-shadow: 0 0 15px currentColor, 0 0 25px rgba(255, 255, 255, 0.3);
         }
         
         @keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 4px; } }
@@ -98,7 +101,6 @@
             0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); }
             50% { box-shadow: 0 0 40px 20px rgba(255, 255, 0, 0.6), inset 0 0 25px rgba(255, 255, 0, 0.5); }
         }
-        /* NEW: Keyframes for unread indicator */
         @keyframes pulse-yellow {
             0% { color: #eab308; } /* yellow-400 */
             50% { color: #fef08a; } /* yellow-200 */
@@ -254,6 +256,21 @@
                         <p className="text-white text-2xl font-bold">{msg.text}</p>
                     </div>
                 );
+                // NEW: Handle baccarat_result message type
+                case 'baccarat_result':
+                    const colorClass = {
+                        'blue-400': 'text-blue-400',
+                        'red-500': 'text-red-500',
+                        'green-400': 'text-green-400'
+                    }[msg.content.color] || 'text-white'; // Fallback to white
+
+                    return (
+                        <div className="text-center my-2 p-4">
+                            <p className={`text-9xl font-bold text-shadow-baccarat ${colorClass}`}>
+                                {msg.content.result}
+                            </p>
+                        </div>
+                    );
                 case 'blessing': return (
                     <div className="border-2 border-green-400 p-4 mt-1 blessing-glow text-center">
                         <p className="text-2xl glitch-text text-green-300 uppercase">Lời Ban Phước</p>
@@ -289,7 +306,7 @@
 
             useEffect(() => {
                 const bootSequence = [
-                    'AQUARIUS OS v9.4 INITIALIZING...',
+                    'AQUARIUS OS v9.5 INITIALIZING...',
                     'CHECKING MEMORY... OK',
                     'LOADING CORE MODULES... OK',
                     'ESTABLISHING FIREBASE CONNECTION... SECURE',
@@ -434,7 +451,6 @@
 
             const loadConversation = (conv) => {
                 setCurrentChat(conv);
-                // **NEW**: Mark conversation as read
                 if (conv.isRead === false) {
                     db.collection('user_chats').doc(conv.id).update({ isRead: true }).catch(console.error);
                 }
@@ -446,6 +462,38 @@
                 unsubscribeMessages.current = messagesRef.onSnapshot(snapshot => {
                     setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 }, console.error);
+            };
+            
+            // NEW: Function to send baccarat result messages
+            const handleSendBaccaratResult = async (resultType) => {
+                if (!currentChat) return;
+
+                let content;
+                switch(resultType) {
+                    case 'P':
+                        content = { result: 'P', color: 'blue-400' };
+                        break;
+                    case 'B':
+                        content = { result: 'B', color: 'red-500' };
+                        break;
+                    case 'H':
+                        content = { result: 'H', color: 'green-400' };
+                        break;
+                    default:
+                        return; // Should not happen
+                }
+
+                soundService.playSend();
+                await db.collection(`user_chats/${currentChat.id}/messages`).add({
+                    type: 'baccarat_result',
+                    content: content,
+                    senderId: currentUser.uid,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await db.collection('user_chats').doc(currentChat.id).update({
+                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
+                    isRead: true // Mark as read for admin, unread for user
+                });
             };
 
             const handleSendMessage = async () => {
@@ -460,20 +508,6 @@
                     lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 setInputMessage('');
-            };
-
-            const handleQuickReply = async (text) => {
-                if (!currentChat) return;
-                soundService.playSend();
-                await db.collection(`user_chats/${currentChat.id}/messages`).add({
-                    type: 'text',
-                    text: text,
-                    senderId: currentUser.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                await db.collection('user_chats').doc(currentChat.id).update({
-                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-                });
             };
 
             const handleSendTableMessage = async () => {
@@ -542,11 +576,12 @@
                                         <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} className="flex-1 retro-input text-sm" placeholder="> GỬI BÀN..." />
                                         <button onClick={handleSendTableMessage} className="ml-2 retro-button border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black text-sm">GỬI BÀN</button>
                                     </div>
+                                    {/* NEW: Updated quick reply buttons */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-                                        <button onClick={() => handleQuickReply('NHÀ CON')} className="retro-button text-sm">NHÀ CON</button>
-                                        <button onClick={() => handleQuickReply('NHÀ CÁI')} className="retro-button text-sm">NHÀ CÁI</button>
-                                        <button onClick={() => handleQuickReply('LONG BẢO')} className="retro-button text-sm">LONG BẢO</button>
-                                        <button onClick={() => handleQuickReply('XIN VUI LÒNG ĐỢI')} className="retro-button text-sm">XIN VUI LÒNG ĐỢI</button>
+                                        <button onClick={() => handleSendBaccaratResult('P')} className="retro-button text-sm border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-black">NHÀ CON (P)</button>
+                                        <button onClick={() => handleSendBaccaratResult('B')} className="retro-button text-sm border-red-500 text-red-500 hover:bg-red-500 hover:text-black">NHÀ CÁI (B)</button>
+                                        <button onClick={() => handleSendBaccaratResult('H')} className="retro-button text-sm border-green-400 text-green-400 hover:bg-green-400 hover:text-black">HOÀ (H)</button>
+                                        <button onClick={() => handleSendMessage({ text: 'XIN VUI LÒNG ĐỢI', type: 'text' })} className="retro-button text-sm">XIN VUI LÒNG ĐỢI</button>
                                     </div>
                                     <div className="flex items-center">
                                         <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSendMessage()} className="flex-1 retro-input" placeholder="> Phản hồi..." />
@@ -599,7 +634,8 @@
                         if (newMessages.length > prevMessages.length) {
                             const latestMsg = newMessages[newMessages.length - 1];
                             if (latestMsg.senderId !== currentUser.uid) {
-                                if (latestMsg.type === 'table_announcement') {
+                                // Play sound for baccarat result as well
+                                if (latestMsg.type === 'table_announcement' || latestMsg.type === 'baccarat_result') {
                                     soundService.playAlert();
                                     setIsAnnouncing(true);
                                     setTimeout(() => setIsAnnouncing(false), 2000);
@@ -654,7 +690,6 @@
                         transaction.set(newMessageRef, messageData);
                         
                         const username = currentUser.email.split('@')[0];
-                        // **NEW**: Mark chat as unread for the admin
                         transaction.set(chatDocRef, {
                             lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
                             username: username,
@@ -701,7 +736,6 @@
                     await db.collection('users').doc(currentUser.uid).set({
                         lastBlessingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
-                    // **NEW**: Mark chat as unread for the admin after system message
                      await db.collection('user_chats').doc(currentUser.uid).update({
                         lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
                         isRead: false
