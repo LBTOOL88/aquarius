@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQUARIUS AI - IMMERSIVE OS v9.3 (Fixed)</title>
+    <title>AQUARIUS AI - IMMERSIVE OS v9.4 (Unread Indicator)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
     
@@ -79,6 +79,10 @@
         .yellow-alert-flash {
             animation: yellow-flash 1s 2;
         }
+        /* NEW: Style for unread message indicator */
+        .unread-indicator {
+            animation: pulse-yellow 2s infinite;
+        }
         
         @keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 4px; } }
         @keyframes glitch { 2%,64%{ transform: translate(2px,0) skew(0deg); } 4%,60%{ transform: translate(-2px,0) skew(0deg); } 62%{ transform: translate(0,0) skew(5deg); } }
@@ -93,6 +97,12 @@
         @keyframes yellow-flash {
             0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); }
             50% { box-shadow: 0 0 40px 20px rgba(255, 255, 0, 0.6), inset 0 0 25px rgba(255, 255, 0, 0.5); }
+        }
+        /* NEW: Keyframes for unread indicator */
+        @keyframes pulse-yellow {
+            0% { color: #eab308; } /* yellow-400 */
+            50% { color: #fef08a; } /* yellow-200 */
+            100% { color: #eab308; } /* yellow-400 */
         }
     </style>
 </head>
@@ -279,7 +289,7 @@
 
             useEffect(() => {
                 const bootSequence = [
-                    'AQUARIUS OS v9.3 INITIALIZING...',
+                    'AQUARIUS OS v9.4 INITIALIZING...',
                     'CHECKING MEMORY... OK',
                     'LOADING CORE MODULES... OK',
                     'ESTABLISHING FIREBASE CONNECTION... SECURE',
@@ -391,16 +401,13 @@
             const unsubscribeMessages = useRef(null);
 
             useEffect(() => {
-                // Listener for conversations
                 const convRef = db.collection('user_chats').orderBy('lastUpdate', 'desc');
                 const unsubConv = convRef.onSnapshot(snapshot => {
                     setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 }, console.error);
                 
-                // Listener for online status
                 const statusRef = rtdb.ref('status');
                 const unsubStatus = statusRef.on('value', snapshot => {
-                    // **FIX**: Add a guard to prevent crash if snapshot is invalid
                     if (snapshot && typeof snapshot.val === 'function') {
                         const statuses = snapshot.val() || {};
                         const count = Object.values(statuses).filter(s => s.isOnline).length;
@@ -410,7 +417,6 @@
                     }
                 });
 
-                // **FIX**: Cleanup all listeners on unmount
                 return () => {
                     unsubConv();
                     unsubStatus();
@@ -418,7 +424,7 @@
                         unsubscribeMessages.current();
                     }
                 };
-            }, []); // This effect runs only once on mount
+            }, []);
             
             useEffect(() => {
                 if (messagesListRef.current) {
@@ -428,6 +434,11 @@
 
             const loadConversation = (conv) => {
                 setCurrentChat(conv);
+                // **NEW**: Mark conversation as read
+                if (conv.isRead === false) {
+                    db.collection('user_chats').doc(conv.id).update({ isRead: true }).catch(console.error);
+                }
+                
                 if (unsubscribeMessages.current) {
                     unsubscribeMessages.current();
                 }
@@ -445,7 +456,6 @@
                     senderId: currentUser.uid,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                // Also update the lastUpdate field on the parent chat document
                 await db.collection('user_chats').doc(currentChat.id).update({
                     lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -502,8 +512,13 @@
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {conversations.map(conv => (
-                                <div key={conv.id} onClick={() => loadConversation(conv)} className={`p-3 border-b border-green-900 cursor-pointer hover:bg-green-900 bg-opacity-50 ${currentChat?.id === conv.id ? 'bg-green-800' : ''}`}>
+                                <div 
+                                    key={conv.id} 
+                                    onClick={() => loadConversation(conv)} 
+                                    className={`p-3 border-b border-green-900 cursor-pointer hover:bg-green-900 bg-opacity-50 flex justify-between items-center ${currentChat?.id === conv.id ? 'bg-green-800' : ''} ${conv.isRead === false ? 'bg-yellow-500 bg-opacity-20' : ''}`}
+                                >
                                     <p className="font-semibold text-md sm:text-lg truncate">> {conv.username || 'Unknown'}</p>
+                                    {conv.isRead === false && <span className="text-xs font-bold unread-indicator">[MỚI]</span>}
                                 </div>
                             ))}
                         </div>
@@ -616,7 +631,7 @@
 
             const sendMessage = async (type, data, cost = 0) => {
                 const userDocRef = db.collection('users').doc(currentUser.uid);
-                const chatDocRef = db.collection('user_chats').doc(currentUser.uid); // **FIX**: Reference to the chat document
+                const chatDocRef = db.collection('user_chats').doc(currentUser.uid);
                 const messagesPath = `user_chats/${currentUser.uid}/messages`;
 
                 try {
@@ -638,12 +653,13 @@
                         const newMessageRef = db.collection(messagesPath).doc();
                         transaction.set(newMessageRef, messageData);
                         
-                        // **FIX**: Also update the parent chat document to update its 'lastUpdate' timestamp
                         const username = currentUser.email.split('@')[0];
+                        // **NEW**: Mark chat as unread for the admin
                         transaction.set(chatDocRef, {
                             lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
                             username: username,
-                            userId: currentUser.uid
+                            userId: currentUser.uid,
+                            isRead: false 
                         }, { merge: true });
 
                     });
@@ -685,9 +701,10 @@
                     await db.collection('users').doc(currentUser.uid).set({
                         lastBlessingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
-                    // Also update the chat document
+                    // **NEW**: Mark chat as unread for the admin after system message
                      await db.collection('user_chats').doc(currentUser.uid).update({
-                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
+                        isRead: false
                     });
                 }, 1500);
 
