@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQUARIUS AI - IMMERSIVE OS v9.9 (Energy Fallback)</title>
+    <title>AQUARIUS AI - IMMERSIVE OS v10.0 (Admin Tools)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
     
@@ -327,7 +327,7 @@
 
             useEffect(() => {
                 const bootSequence = [
-                    'AQUARIUS OS v9.9 INITIALIZING...',
+                    'AQUARIUS OS v10.0 INITIALIZING...',
                     'CHECKING MEMORY... OK',
                     'LOADING CORE MODULES... OK',
                     'ESTABLISHING FIREBASE CONNECTION... SECURE',
@@ -439,6 +439,9 @@
             const [onlineCount, setOnlineCount] = useState(0);
             const [tableAnnounceInput, setTableAnnounceInput] = useState('');
             const [editingMessage, setEditingMessage] = useState(null);
+            const [activeMenu, setActiveMenu] = useState(null); // NEW: State for user action menu
+            const [showConfirmModal, setShowConfirmModal] = useState(false); // NEW: State for confirmation modal
+            const [actionToConfirm, setActionToConfirm] = useState(null); // NEW: State to hold the action to confirm
             const messagesListRef = useRef(null);
             const unsubscribeMessages = useRef(null);
 
@@ -475,6 +478,7 @@
             const loadConversation = (conv) => {
                 setCurrentChat(conv);
                 setEditingMessage(null);
+                setActiveMenu(null);
                 if (conv.isRead === false) {
                     db.collection('user_chats').doc(conv.id).update({ isRead: true }).catch(console.error);
                 }
@@ -585,6 +589,64 @@
                     alert("Lỗi: Không thể cập nhật tin nhắn.");
                 }
             };
+
+            // NEW: Function to disconnect a user
+            const handleDisconnectUser = async (userId) => {
+                if (!userId) return;
+                try {
+                    const userStatusRef = rtdb.ref('/status/' + userId);
+                    await userStatusRef.set({
+                        isOnline: false,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    alert(`Đã ngắt kết nối người dùng ${userId}.`);
+                } catch (error) {
+                    console.error("Error disconnecting user:", error);
+                    alert("Lỗi: Không thể ngắt kết nối người dùng.");
+                }
+                setActiveMenu(null);
+            };
+
+            // NEW: Function to initiate chat history deletion
+            const handleDeleteHistory = (userId, username) => {
+                setActionToConfirm({
+                    action: () => executeDeleteHistory(userId),
+                    message: `Bạn có chắc chắn muốn xóa toàn bộ lịch sử chat của ${username}? Hành động này không thể hoàn tác.`
+                });
+                setShowConfirmModal(true);
+                setActiveMenu(null);
+            };
+
+            // NEW: Function that executes the deletion
+            const executeDeleteHistory = async (userId) => {
+                if (!userId) return;
+                const messagesRef = db.collection('user_chats').doc(userId).collection('messages');
+                try {
+                    const snapshot = await messagesRef.get();
+                    if (snapshot.empty) {
+                        alert("Không có tin nhắn nào để xóa.");
+                        return;
+                    }
+                    // Delete documents in a batch
+                    const batch = db.batch();
+                    snapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+
+                    // Add a system message indicating deletion
+                    await messagesRef.add({
+                        type: 'system',
+                        text: 'Lịch sử cuộc trò chuyện đã được quản trị viên xóa.',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    alert("Đã xóa thành công lịch sử chat.");
+                } catch (error) {
+                    console.error("Error deleting chat history:", error);
+                    alert("Lỗi: Không thể xóa lịch sử chat.");
+                }
+            };
             
             const AsciiChart = ({ value, total }) => {
                 const percentage = total > 0 ? (value / total) * 100 : 0;
@@ -592,6 +654,26 @@
                 const emptyChars = 20 - filledChars;
                 const bar = `[${'█'.repeat(filledChars)}${'░'.repeat(emptyChars)}]`;
                 return <pre className="text-sm">{bar} {value}/{total} ONLINE</pre>;
+            };
+
+            // NEW: Confirmation Modal Component
+            const ConfirmationModal = () => {
+                if (!showConfirmModal || !actionToConfirm) return null;
+                return (
+                    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+                        <div className="p-6 retro-container w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl sm:text-2xl glitch-text mb-4 text-yellow-400">YÊU CẦU XÁC NHẬN</h3>
+                            <p className="mb-6">{actionToConfirm.message}</p>
+                            <div className="flex justify-end space-x-4 mt-4">
+                                <button onClick={() => setShowConfirmModal(false)} className="retro-button">HỦY</button>
+                                <button onClick={() => {
+                                    actionToConfirm.action();
+                                    setShowConfirmModal(false);
+                                }} className="retro-button border-red-500 text-red-500 hover:bg-red-500 hover:text-black">XÁC NHẬN</button>
+                            </div>
+                        </div>
+                    </div>
+                );
             };
 
             return (
@@ -607,13 +689,23 @@
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {conversations.map(conv => (
-                                <div 
-                                    key={conv.id} 
-                                    onClick={() => loadConversation(conv)} 
-                                    className={`p-3 border-b border-green-900 cursor-pointer hover:bg-green-900 bg-opacity-50 flex justify-between items-center ${currentChat?.id === conv.id ? 'bg-green-800' : ''} ${conv.isRead === false ? 'bg-yellow-500 bg-opacity-20' : ''}`}
-                                >
-                                    <p className="font-semibold text-md sm:text-lg truncate">> {conv.username || 'Unknown'}</p>
-                                    {conv.isRead === false && <span className="text-xs font-bold unread-indicator">[MỚI]</span>}
+                                <div key={conv.id} className="p-3 border-b border-green-900 flex justify-between items-center relative">
+                                    <div onClick={() => loadConversation(conv)} className="flex-1 cursor-pointer">
+                                        <p className={`font-semibold text-md sm:text-lg truncate ${currentChat?.id === conv.id ? 'text-cyan-300' : ''}`}>
+                                            > {conv.username || 'Unknown'}
+                                        </p>
+                                    </div>
+                                    {conv.isRead === false && <span className="text-xs font-bold unread-indicator mr-2">[MỚI]</span>}
+                                    {/* NEW: User action menu */}
+                                    <button onClick={() => setActiveMenu(activeMenu === conv.id ? null : conv.id)} className="p-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
+                                    </button>
+                                    {activeMenu === conv.id && (
+                                        <div className="absolute right-0 top-12 mt-1 w-48 retro-container z-10 p-1" onMouseLeave={() => setActiveMenu(null)}>
+                                            <button onClick={() => handleDeleteHistory(conv.id, conv.username)} className="w-full text-left p-2 text-sm hover:bg-green-900">Xóa Lịch Sử Chat</button>
+                                            <button onClick={() => handleDisconnectUser(conv.id)} className="w-full text-left p-2 text-sm hover:bg-green-900">Ngắt Kết Nối</button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -689,6 +781,7 @@
                             <div className="flex-1 flex items-center justify-center opacity-50 text-xl">> CHỌN KÊNH LIÊN LẠC</div>
                         )}
                     </section>
+                    <ConfirmationModal />
                 </div>
             );
         };
@@ -1086,4 +1179,4 @@
         ReactDOM.render(<System />, document.getElementById('root'));
     </script>
 </body>
-</html>
+</ht
