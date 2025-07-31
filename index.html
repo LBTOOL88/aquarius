@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQUARIUS AI - IMMERSIVE OS v9.8 (Daily Limits)</title>
+    <title>AQUARIUS AI - IMMERSIVE OS v9.9 (Energy Fallback)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
     
@@ -136,7 +136,7 @@
         // --- GAME DATA & CONSTANTS ---
         const BACARAT_TABLES = ["BACARAT C04", "BACARAT C05", "BACARAT C06", "BACARAT C07", "BACARAT C01", "BACARAT C02", "BACARAT C03", "BACARAT C08", "BACARAT C09", "BACARAT C10", "BACARAT 1", "BACARAT 2", "BACARAT 3", "BACARAT 4", "BACARAT 5", "BACARAT 7", "BACARAT 8", "BACARAT 9", "BACARAT 10", "BACARAT C11", "BACARAT C12", "BACARAT C13", "BACARAT C15"];
         const COOLDOWN_DURATION = 24 * 60 * 60 * 1000;
-        const DAILY_QUESTION_LIMIT = 2; // NEW: Daily question limit
+        const DAILY_QUESTION_LIMIT = 2;
 
         // --- SOUND SERVICE ---
         const soundService = {
@@ -327,7 +327,7 @@
 
             useEffect(() => {
                 const bootSequence = [
-                    'AQUARIUS OS v9.8 INITIALIZING...',
+                    'AQUARIUS OS v9.9 INITIALIZING...',
                     'CHECKING MEMORY... OK',
                     'LOADING CORE MODULES... OK',
                     'ESTABLISHING FIREBASE CONNECTION... SECURE',
@@ -373,7 +373,6 @@
 
                     const email = processedUsername + DUMMY_DOMAIN;
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    // NEW: Initialize dailyQuestionCount and lastQuestionTimestamp
                     await db.collection("users").doc(userCredential.user.uid).set({
                         uid: userCredential.user.uid,
                         username: processedUsername,
@@ -708,12 +707,10 @@
             const [isAnnouncing, setIsAnnouncing] = useState(false);
             const messagesListRef = useRef(null);
 
-            // MODIFIED: State for both question and blessing limits
             const [dailyQuestionsLeft, setDailyQuestionsLeft] = useState(DAILY_QUESTION_LIMIT);
-            const [questionCooldown, setQuestionCooldown] = useState(0);
             const [blessingCooldown, setBlessingCooldown] = useState(0);
+            const QUESTION_ENERGY_COST = 7;
 
-            // Utility to format time
             const formatTime = (ms) => {
                 if (ms <= 0) return "00:00:00";
                 const totalSeconds = Math.floor(ms / 1000);
@@ -741,14 +738,10 @@
                         const lastQuestionTs = data.lastQuestionTimestamp?.toMillis() || 0;
                         if (now - lastQuestionTs > COOLDOWN_DURATION) {
                             setDailyQuestionsLeft(DAILY_QUESTION_LIMIT);
-                            setQuestionCooldown(0);
                         } else {
                             const questionsUsed = data.dailyQuestionCount || 0;
                             const questionsLeft = DAILY_QUESTION_LIMIT - questionsUsed;
                             setDailyQuestionsLeft(questionsLeft > 0 ? questionsLeft : 0);
-                            if (questionsLeft <= 0) {
-                                setQuestionCooldown((lastQuestionTs + COOLDOWN_DURATION) - now);
-                            }
                         }
 
                         // Check and set blessing limit
@@ -786,10 +779,8 @@
                 return () => { unsubUser(); unsubMessages(); };
             }, [currentUser]);
 
-            // Timer for cooldown countdowns
             useEffect(() => {
                 const timer = setInterval(() => {
-                    setQuestionCooldown(prev => prev > 0 ? prev - 1000 : 0);
                     setBlessingCooldown(prev => prev > 0 ? prev - 1000 : 0);
                 }, 1000);
                 return () => clearInterval(timer);
@@ -799,7 +790,6 @@
                  if (messagesListRef.current) messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
             }, [messages]);
             
-            // MODIFIED: handleAskQuestion to manage daily limits
             const handleAskQuestion = async () => {
                 const content = inputMessage.trim();
                 if (content === '') return;
@@ -818,28 +808,32 @@
                         const lastQuestionTs = data.lastQuestionTimestamp?.toMillis() || 0;
                         
                         let currentCount = data.dailyQuestionCount || 0;
+                        let currentEnergy = data.energy || 0;
 
-                        // Reset count if cooldown is over
                         if (now - lastQuestionTs > COOLDOWN_DURATION) {
                             currentCount = 0;
                         }
 
-                        if (currentCount >= DAILY_QUESTION_LIMIT) {
-                            throw "Bạn đã hết lượt hỏi hôm nay.";
+                        const isFree = currentCount < DAILY_QUESTION_LIMIT;
+
+                        if (isFree) {
+                            transaction.update(userDocRef, {
+                                dailyQuestionCount: currentCount + 1,
+                                lastQuestionTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        } else {
+                            if (currentEnergy < QUESTION_ENERGY_COST) {
+                                throw "Đã hết lượt hỏi miễn phí và không đủ năng lượng.";
+                            }
+                            transaction.update(userDocRef, { 
+                                energy: firebase.firestore.FieldValue.increment(-QUESTION_ENERGY_COST) 
+                            });
                         }
                         
-                        // Update question count and timestamp
-                        transaction.update(userDocRef, {
-                            dailyQuestionCount: currentCount + 1,
-                            lastQuestionTimestamp: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        // Add message to chat
                         const messageData = { type: 'text', text: content, senderId: currentUser.uid, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
                         const newMessageRef = db.collection(messagesPath).doc();
                         transaction.set(newMessageRef, messageData);
                         
-                        // Update chat metadata
                         const username = currentUser.email.split('@')[0];
                         transaction.set(chatDocRef, {
                             lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
@@ -857,7 +851,6 @@
                 }
             };
             
-            // MODIFIED: handleBlessingRequest to use its own cooldown
             const handleBlessingRequest = async () => {
                 if (plea.trim() === '') return;
                 if (blessingCooldown > 0) {
@@ -867,7 +860,6 @@
                 
                 setShowBlessingModal(false);
                 
-                // Send the plea message first
                 await db.collection(`user_chats/${currentUser.uid}/messages`).add({
                     type: 'plea',
                     text: plea.trim(),
@@ -889,7 +881,6 @@
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     };
                     await db.collection(`user_chats/${currentUser.uid}/messages`).add(blessingMessage);
-                    // Update the blessing timestamp and chat metadata
                     await db.collection('users').doc(currentUser.uid).set({
                         lastBlessingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
@@ -909,7 +900,6 @@
                     return;
                 }
                 const infoContent = { f168Account, capital, target };
-                // This message type does not count towards the daily limit
                 await db.collection(`user_chats/${currentUser.uid}/messages`).add({
                     type: 'info_submission',
                     content: infoContent,
@@ -938,6 +928,7 @@
             };
 
             const username = currentUser.email.split('@')[0];
+            const canAsk = dailyQuestionsLeft > 0 || energy >= QUESTION_ENERGY_COST;
 
             return (
                  <div className={`h-screen p-1 sm:p-2 md:p-4 ${isAnnouncing ? 'yellow-alert-flash' : ''}`}>
@@ -960,14 +951,13 @@
                                 </div>
                             ))}
                         </main>
-                        {/* MODIFIED: Display for both cooldowns */}
                         <div className="p-2 border-t border-b border-green-900 grid grid-cols-2 gap-2 text-center">
                              <div>
                                 <p className="opacity-70 text-sm">HỎI AQUARIUS</p>
                                 {dailyQuestionsLeft > 0 ? (
-                                    <p className="text-lg">{dailyQuestionsLeft} / {DAILY_QUESTION_LIMIT} LƯỢT</p>
+                                    <p className="text-lg">{dailyQuestionsLeft} / {DAILY_QUESTION_LIMIT} LƯỢT MIỄN PHÍ</p>
                                 ) : (
-                                    <p className="text-lg text-yellow-400">{formatTime(questionCooldown)}</p>
+                                    <p className="text-lg text-yellow-400">Tốn {QUESTION_ENERGY_COST} N.LƯỢNG</p>
                                 )}
                             </div>
                              <div>
@@ -982,8 +972,8 @@
                         <footer className="p-2 border-t border-green-900">
                             <div className="flex w-full items-center">
                                 <span className="mr-2 text-lg">></span>
-                                <input className="flex-1 retro-input" placeholder="Nhập câu hỏi..." value={inputMessage} onChange={(e) => {setInputMessage(e.target.value); soundService.playTyping();}} onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAskQuestion())} disabled={dailyQuestionsLeft <= 0} />
-                                <button onClick={handleAskQuestion} disabled={dailyQuestionsLeft <= 0} className="ml-2 retro-button p-2">GỬI</button>
+                                <input className="flex-1 retro-input" placeholder="Nhập câu hỏi..." value={inputMessage} onChange={(e) => {setInputMessage(e.target.value); soundService.playTyping();}} onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAskQuestion())} disabled={!canAsk} />
+                                <button onClick={handleAskQuestion} disabled={!canAsk} className="ml-2 retro-button p-2">GỬI</button>
                             </div>
                         </footer>
                     </div>
