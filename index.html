@@ -30,6 +30,8 @@
         :root {
             --primary-glow: #00ddff;
             --secondary-glow: #f923a5;
+            --warning-glow: #ffc400;
+            --danger-glow: #ff3838;
             --bg-color: #000000;
             --border-size: 2px;
         }
@@ -160,6 +162,15 @@
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         .fade-in { animation: fadeIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
         
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 15px 0px var(--glow-color, rgba(255, 196, 0, 0.5)); }
+            50% { box-shadow: 0 0 25px 10px var(--glow-color, rgba(255, 196, 0, 0.8)); }
+            100% { box-shadow: 0 0 15px 0px var(--glow-color, rgba(255, 196, 0, 0.5)); }
+        }
+        .pulse-announcement {
+            animation: pulse-border 2s infinite;
+        }
+
     </style>
 </head>
 <body>
@@ -295,7 +306,7 @@
         
         const { useState, useEffect, useRef, Fragment } = React;
 
-        // --- FIREBASE CONFIG (Sử dụng config của bạn) ---
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyCHDzGbXmHNWKL2UtRm57vPRVxZb31dHto",
             authDomain: "long-bao-tool-ai.firebaseapp.com",
@@ -317,6 +328,7 @@
 
         // --- GLOBAL CONSTANTS ---
         const BACARAT_TABLES = ["BACARAT C04", "BACARAT C05", "BACARAT C06", "BACARAT C07", "BACARAT C01", "BACARAT C02", "BACARAT C03", "BACARAT C08", "BACARAT C09", "BACARAT C10", "BACARAT 1", "BACARAT 2", "BACARAT 3", "BACARAT 4", "BACARAT 5", "BACARAT 7", "BACARAT 8", "BACARAT 9", "BACARAT 10", "BACARAT C11", "BACARAT C12", "BACARAT C13", "BACARAT C15"];
+        const MAX_ENERGY = 100;
         
         // --- SOUND FX ---
         const sfx = {
@@ -327,6 +339,8 @@
             error: () => new Tone.NoiseSynth({ noise: { type: "pink" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination().triggerAttackRelease("8n"),
             notification: () => new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } }).toDestination().triggerAttackRelease("G5", "16n", Tone.now() + 0.1).triggerAttackRelease("C6", "16n", Tone.now() + 0.2),
             glitch: () => new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, decay: 0.05, sustain: 0 } }).toDestination().triggerAttackRelease("16n"),
+            blessing: () => new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.2, decay: 0.3, sustain: 0.5, release: 0.5 } }).toDestination().triggerAttackRelease("A4", "2n"),
+            warning: () => new Tone.Synth({ oscillator: { type: "fmsquare", modulationIndex: 1.2 }, envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 0.2 } }).toDestination().triggerAttackRelease("A3", "4n"),
         };
 
         // --- HELPER COMPONENTS & HOOKS ---
@@ -340,7 +354,8 @@
             return React.cloneElement(children, { className: `${children.props.className || ''} ${isVisible ? 'fade-in' : 'fade-out'}` });
         };
         
-        const useDecryptingText = (targetText, start) => {
+        const useDecryptingText = (targetText, start, options = {}) => {
+            const { speed = 30, onComplete } = options;
             const [text, setText] = useState('');
             const chars = '!<>-_\\/[]{}—=+*^?#________';
             
@@ -350,7 +365,7 @@
                 let frame = 0;
                 const animate = () => {
                     frame++;
-                    const progress = frame / 30; // Control speed
+                    const progress = frame / speed;
                     let newText = '';
                     for (let i = 0; i < targetText.length; i++) {
                         if (i < progress * targetText.length) {
@@ -365,7 +380,8 @@
                          frameRequest = requestAnimationFrame(animate);
                     } else {
                         setText(targetText);
-                        sfx.confirm();
+                        if (onComplete) onComplete();
+                        else sfx.confirm();
                     }
                 };
                 
@@ -378,14 +394,14 @@
                     cancelAnimationFrame(frameRequest);
                     clearTimeout(timeoutId);
                 }
-            }, [targetText, start]);
+            }, [targetText, start, speed, onComplete]);
             
             return text;
         };
 
-        const Modal = ({ children, onClose }) => (
+        const Modal = ({ children, onClose, size = 'md' }) => (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 fade-in" onClick={onClose}>
-                <div className="w-full max-w-md hud-frame" onClick={e => e.stopPropagation()}>{children}</div>
+                <div className={`w-full max-w-${size} hud-frame`} onClick={e => e.stopPropagation()}>{children}</div>
             </div>
         );
         
@@ -400,7 +416,6 @@
             const [startDecrypt, setStartDecrypt] = useState(false);
 
             useEffect(() => {
-                // Start decryption effect after a short delay
                 const timer = setTimeout(() => setStartDecrypt(true), 100);
                 return () => clearTimeout(timer);
             }, []);
@@ -442,7 +457,7 @@
                     const userDocRef = doc(db, "users", userCredential.user.uid);
                     await setDoc(userDocRef, {
                         uid: userCredential.user.uid, username: processedUsername, createdAt: serverTimestamp(),
-                        energy: 7, hasSubmittedInfo: false, dailyQuestionCount: 0, lastQuestionTimestamp: null, lastBlessingTimestamp: null
+                        energy: 7, hasSubmittedInfo: false, lastBlessingTimestamp: null, lastLoanRequestTimestamp: null
                     });
                     sfx.confirm();
                 } catch (err) {
@@ -480,38 +495,102 @@
         };
         
         //================================================================================
-        // COMPONENT: UserView (No changes here)
+        // COMPONENT: UserView
         //================================================================================
         const UserView = ({ currentUser, onLogout }) => {
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
             const [userData, setUserData] = useState(null);
             const [showBlessingModal, setShowBlessingModal] = useState(false);
+            const [showLoanModal, setShowLoanModal] = useState(false);
+            const [showHistoryModal, setShowHistoryModal] = useState(false);
             const [showInfoModal, setShowInfoModal] = useState(false);
             const [plea, setPlea] = useState('');
+            const [loanFormData, setLoanFormData] = useState({ accountName: '', amount: '' });
             const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
+            const [isAdminTyping, setIsAdminTyping] = useState(false);
+            const [blessingCooldown, setBlessingCooldown] = useState("");
+            const [loanCooldown, setLoanCooldown] = useState("");
             const messagesEndRef = useRef(null);
 
-            useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+            useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isAdminTyping]);
+            
+            useEffect(() => {
+                if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                    Notification.requestPermission();
+                }
+            }, []);
+
+            const useCooldownTimer = (lastTimestamp, setCooldownString) => {
+                 useEffect(() => {
+                    if (!userData || !lastTimestamp) {
+                        setCooldownString("");
+                        return;
+                    }
+
+                    const interval = setInterval(() => {
+                        const now = Date.now();
+                        const lastTime = lastTimestamp.toMillis();
+                        const twentyFourHours = 24 * 60 * 60 * 1000;
+                        const timePassed = now - lastTime;
+
+                        if (timePassed < twentyFourHours) {
+                            const timeLeft = twentyFourHours - timePassed;
+                            const hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24);
+                            const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
+                            const seconds = Math.floor((timeLeft / 1000) % 60);
+                            setCooldownString(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+                        } else {
+                            setCooldownString("");
+                            clearInterval(interval);
+                        }
+                    }, 1000);
+
+                    return () => clearInterval(interval);
+                }, [userData, lastTimestamp]);
+            }
+
+            useCooldownTimer(userData?.lastBlessingTimestamp, setBlessingCooldown);
+            useCooldownTimer(userData?.lastLoanRequestTimestamp, setLoanCooldown);
 
             useEffect(() => {
                 if (!currentUser) return;
+
                 const userDocRef = doc(db, 'users', currentUser.uid);
                 const unsubUser = onSnapshot(userDocRef, (doc) => {
                     if (doc.exists()) {
-                        setUserData(doc.data());
-                        if(doc.data().hasSubmittedInfo !== true) setShowInfoModal(true);
+                        const data = doc.data();
+                        setUserData(data);
+                        if(data.hasSubmittedInfo !== true) setShowInfoModal(true);
                     }
                 });
+
                 const messagesColRef = collection(db, 'user_chats', currentUser.uid, 'messages');
                 const q = query(messagesColRef, orderBy('timestamp'));
                 const unsubMessages = onSnapshot(q, (snapshot) => {
-                    if(!snapshot.metadata.hasPendingWrites && snapshot.docChanges().some(change => change.type === 'added')) {
-                        sfx.notification();
-                    }
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const newMessage = change.doc.data();
+                            if (newMessage.senderId !== currentUser.uid) {
+                                sfx.notification();
+                                if (document.hidden && Notification.permission === "granted") {
+                                    new Notification("Tin nhắn mới từ Aquarius V", {
+                                        body: newMessage.text || "Bạn có một tin nhắn đặc biệt.",
+                                        icon: "https://i.imgur.com/9J03b7I.png"
+                                    });
+                                }
+                            }
+                        }
+                    });
                     setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 });
-                return () => { unsubUser(); unsubMessages(); };
+
+                const typingRef = ref(rtdb, `typing_status/${currentUser.uid}`);
+                const unsubTyping = onValue(typingRef, (snapshot) => {
+                    setIsAdminTyping(snapshot.val()?.isTyping || false);
+                });
+
+                return () => { unsubUser(); unsubMessages(); unsubTyping(); };
             }, [currentUser]);
 
             const handleSendMessage = async () => {
@@ -526,12 +605,31 @@
             };
             
             const handleBlessingRequest = async () => {
-                if(plea.trim() === '') return;
-                sfx.confirm();
+                if(plea.trim() === '' || blessingCooldown) return;
+                sfx.blessing();
                 setShowBlessingModal(false);
                 const blessing = { table: BACARAT_TABLES[Math.floor(Math.random() * BACARAT_TABLES.length)], side: Math.random() < 0.5 ? 'NHÀ CON' : 'NHÀ CÁI', hand: Math.floor(Math.random() * 16) + 15 };
                 await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'blessing', content: blessing, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp() });
+                await updateDoc(doc(db, 'users', currentUser.uid), { lastBlessingTimestamp: serverTimestamp() });
                 setPlea('');
+            };
+
+            const handleLoanRequest = async () => {
+                if (!loanFormData.accountName.trim() || !loanFormData.amount.trim() || loanCooldown) return;
+                sfx.confirm();
+                setShowLoanModal(false);
+                await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), {
+                    type: 'loan_request_details',
+                    content: {
+                        ...loanFormData,
+                        requestText: 'NGƯỜI DÙNG ĐÃ GỬI YÊU CẦU ỨNG TIỀN ĐẾN AQUARIUS, VUI LÒNG ĐỢI'
+                    },
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+                await updateDoc(doc(db, 'users', currentUser.uid), { lastLoanRequestTimestamp: serverTimestamp() });
+                await setDoc(doc(db, 'user_chats', currentUser.uid), { lastUpdate: serverTimestamp(), isRead: false }, { merge: true });
+                setLoanFormData({ accountName: '', amount: '' });
             };
 
             const handleInfoSubmit = async () => {
@@ -545,7 +643,7 @@
 
             if (!userData) return null;
             
-            const MessageBubble = ({ children, isUser }) => {
+            const MessageBubble = ({ children, isUser, className }) => {
                 const style = {
                     clipPath: isUser 
                         ? 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)' 
@@ -556,38 +654,121 @@
                     border: '1px solid',
                     borderColor: isUser ? 'rgba(0, 221, 255, 0.3)' : 'rgba(100, 100, 120, 0.3)'
                 };
-                return <div className="p-4" style={style}>{children}</div>
+                return <div className={`p-4 ${className}`} style={style}>{children}</div>
             }
+
+            const TypingIndicator = () => {
+                const text = useDecryptingText("AQUARIUS IS TYPING...", true, { speed: 10, onComplete: () => {} });
+                return (
+                    <div className="flex mb-4 justify-start">
+                        <div className="max-w-lg">
+                            <MessageBubble isUser={false}>
+                                <p className="text-white text-lg font-tech-mono">{text}</p>
+                            </MessageBubble>
+                        </div>
+                    </div>
+                );
+            };
+
+            const BlessingHistoryModal = ({ messages, onClose }) => {
+                const blessingMessages = messages.filter(m => m.type === 'blessing').reverse();
+                return (
+                    <Modal onClose={onClose} size="lg">
+                        <h3 className="text-2xl font-bold text-center mb-4 text-white">Lịch sử Ban Phước</h3>
+                        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
+                            {blessingMessages.length > 0 ? blessingMessages.map(msg => (
+                                <div key={msg.id} className="p-4 border-2 border-[var(--secondary-glow)] rounded-lg text-center space-y-1 shadow-[0_0_20px_var(--secondary-glow)] mb-4">
+                                    <p className="text-sm text-gray-400">{msg.timestamp?.toDate().toLocaleString('vi-VN')}</p>
+                                    <p><span className="font-semibold text-[var(--primary-glow)]">Bàn:</span> {msg.content.table}</p>
+                                    <p><span className="font-semibold text-[var(--primary-glow)]">Kết quả:</span> {msg.content.side}</p>
+                                    <p><span className="font-semibold text-[var(--primary-glow)]">Tay thứ:</span> {msg.content.hand}</p>
+                                </div>
+                            )) : <p className="text-center text-gray-400">Chưa có lịch sử.</p>}
+                        </div>
+                        <div className="flex justify-end mt-6">
+                            <button onClick={onClose} className="primary-btn">Đóng</button>
+                        </div>
+                    </Modal>
+                )
+            };
+            
+            const EnergyBar = ({ current, max }) => {
+                const percentage = Math.min(100, (current / max) * 100);
+                return (
+                     <div className="w-full">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-bold text-[var(--primary-glow)]">NĂNG LƯỢNG</span>
+                            <span className="text-sm font-bold text-white">{current} / {max}</span>
+                        </div>
+                        <div className="w-full bg-black/50 border border-white/20 h-4" style={{clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)'}}>
+                            <div 
+                                className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-500"
+                                style={{ width: `${percentage}%`, boxShadow: `0 0 10px var(--primary-glow)` }}
+                            ></div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const MessageRenderer = ({ msg }) => {
+                const isUser = msg.senderId === currentUser.uid;
+                
+                const renderContent = () => {
+                    switch(msg.type) {
+                        case 'blessing': return (<div className="p-4 border-2 border-[var(--secondary-glow)] rounded-lg text-center space-y-1 shadow-[0_0_20px_var(--secondary-glow)]"><p className="text-lg font-bold text-white uppercase tracking-widest">Lời Ban Phước</p><p><span className="font-semibold text-[var(--primary-glow)]">Bàn:</span> {msg.content.table}</p><p><span className="font-semibold text-[var(--primary-glow)]">Kết quả:</span> {msg.content.side}</p><p><span className="font-semibold text-[var(--primary-glow)]">Tay thứ:</span> {msg.content.hand}</p></div>);
+                        case 'info_submission': return (<div className="space-y-1 text-sm"><p className="font-bold text-center text-[var(--primary-glow)]">BÁO CÁO KHỞI TẠO</p><p>Tài khoản F168: {msg.content.f168Account}</p><p>Số vốn: {msg.content.capital}</p><p>Mục tiêu: {msg.content.target}</p></div>);
+                        case 'loan_request_details': return <p className="text-yellow-400 italic text-center">-- {msg.content.requestText} (Tài khoản: {msg.content.accountName}, Số tiền: {msg.content.amount}) --</p>;
+                        case 'baccarat_result': return <div className={`flex items-center justify-center w-24 h-24 rounded-full border-4`} style={{backgroundColor: msg.content.color, borderColor: msg.content.color, color: 'white', textShadow: '0 0 5px black'}}><span className="text-6xl font-black">{msg.content.result}</span></div>;
+                        case 'table_announcement': return <div className="p-4 border-2 border-[var(--warning-glow)] bg-yellow-900/30 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--warning-glow)'}}><h4 className="text-xl font-bold text-[var(--warning-glow)] uppercase tracking-widest">THÔNG BÁO BÀN</h4><p className="text-2xl font-bold text-white">{msg.content.text}</p></div>;
+                        case 'warning': return <div className="p-4 border-2 border-[var(--danger-glow)] bg-red-900/40 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--danger-glow)'}}><h4 className="text-xl font-bold text-[var(--danger-glow)] uppercase tracking-widest">CẢNH BÁO</h4><p className="text-xl font-semibold text-white">{msg.content.text}</p></div>;
+                        case 'wait_message': return <p className="text-cyan-300 italic text-center">-- {msg.content.text} --</p>;
+                        default: return <p className="text-white text-lg">{msg.text}</p>;
+                    }
+                };
+                
+                const isSpecialMessage = ['baccarat_result', 'table_announcement', 'wait_message', 'loan_request_details', 'warning'].includes(msg.type);
+
+                if (isSpecialMessage) {
+                    return <div className="flex justify-center my-4">{renderContent()}</div>;
+                }
+
+                return (
+                    <div className={`flex mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                        <div className="max-w-lg">
+                            <MessageBubble isUser={isUser}>{renderContent()}</MessageBubble>
+                        </div>
+                    </div>
+                );
+            };
+
 
             return (
                 <Fragment>
                     <div className="h-screen w-screen flex items-center justify-center p-4">
                         <div className="w-full h-full max-w-4xl hud-frame flex flex-col">
-                            <header className="flex justify-between items-center p-4 flex-shrink-0">
-                                <div>
+                            <header className="flex justify-between items-center p-4 flex-shrink-0 space-x-4">
+                                <div className="flex-1">
                                     <h2 className="text-xl font-bold text-white">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
-                                    <p className="text-sm text-[var(--primary-glow)]">Năng lượng: {userData.energy}</p>
+                                    <EnergyBar current={userData.energy} max={MAX_ENERGY} />
                                 </div>
-                                <button onClick={onLogout} className="secondary-btn px-4 py-2">Ngắt kết nối</button>
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => setShowLoanModal(true)} disabled={!!loanCooldown} className="secondary-btn px-4 py-2 text-sm disabled:opacity-50 disabled:filter-none" style={{'--secondary-glow': 'var(--warning-glow)', color: 'var(--warning-glow)', borderColor: 'var(--warning-glow)'}}>{loanCooldown ? <span className="font-tech-mono text-xs">{loanCooldown}</span> : 'Ứng tiền'}</button>
+                                    <button onClick={() => setShowHistoryModal(true)} className="secondary-btn px-4 py-2 text-sm">Lịch sử</button>
+                                    <button onClick={onLogout} className="secondary-btn px-4 py-2">Ngắt kết nối</button>
+                                </div>
                             </header>
                             
                             <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                               {messages.map(msg => {
-                                   const isUser = msg.senderId === currentUser.uid;
-                                   const MessageContent = () => {
-                                        switch(msg.type) {
-                                            case 'blessing': return (<div className="p-4 border-2 border-[var(--secondary-glow)] rounded-lg text-center space-y-1 shadow-[0_0_20px_var(--secondary-glow)]"><p className="text-lg font-bold text-white uppercase tracking-widest">Lời Ban Phước</p><p><span className="font-semibold text-[var(--primary-glow)]">Bàn:</span> {msg.content.table}</p><p><span className="font-semibold text-[var(--primary-glow)]">Kết quả:</span> {msg.content.side}</p><p><span className="font-semibold text-[var(--primary-glow)]">Tay thứ:</span> {msg.content.hand}</p></div>);
-                                            case 'info_submission': return (<div className="space-y-1 text-sm"><p className="font-bold text-center text-[var(--primary-glow)]">BÁO CÁO KHỞI TẠO</p><p>Tài khoản F168: {msg.content.f168Account}</p><p>Số vốn: {msg.content.capital}</p><p>Mục tiêu: {msg.content.target}</p></div>);
-                                            default: return <p className="text-white text-lg">{msg.text}</p>;
-                                        }
-                                   };
-                                   return (<div key={msg.id} className={`flex mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}><div className="max-w-lg"><MessageBubble isUser={isUser}><MessageContent /></MessageBubble></div></div>);
-                               })}
+                               {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} />)}
+                               {isAdminTyping && <TypingIndicator />}
                                <div ref={messagesEndRef} />
                             </main>
 
                             <footer className="p-4 flex-shrink-0">
                                 <div className="flex items-center space-x-4">
+                                    <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn px-4 disabled:filter-none disabled:opacity-50" style={{'--primary-glow': 'var(--secondary-glow)'}}>
+                                        {blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}
+                                    </button>
                                     <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input" />
                                     <button onClick={handleSendMessage} className="primary-btn px-6">Gửi</button>
                                 </div>
@@ -601,7 +782,7 @@
                             <textarea value={plea} onChange={e => setPlea(e.target.value)} className="w-full h-24 p-3 form-input bg-[rgba(0,0,0,0.3)]" placeholder="Viết lời thỉnh cầu của bạn..."></textarea>
                             <div className="flex justify-end space-x-4 mt-4">
                                 <button onClick={() => setShowBlessingModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
-                                <button onClick={handleBlessingRequest} className="primary-btn px-4 py-2">Gửi</button>
+                                <button onClick={handleBlessingRequest} disabled={!plea.trim() || !!blessingCooldown} className="primary-btn px-4 py-2">Gửi</button>
                             </div>
                         </Modal>
                     </AnimatedPresence>
@@ -618,12 +799,28 @@
                             </div>
                         </Modal>
                     </AnimatedPresence>
+                    <AnimatedPresence isVisible={showHistoryModal}>
+                        <BlessingHistoryModal messages={messages} onClose={() => setShowHistoryModal(false)} />
+                    </AnimatedPresence>
+                    <AnimatedPresence isVisible={showLoanModal}>
+                        <Modal onClose={() => setShowLoanModal(false)}>
+                            <h3 className="text-2xl font-bold text-center mb-4 text-[var(--warning-glow)]">Yêu cầu ứng năng lượng</h3>
+                            <div className="space-y-4">
+                                <input value={loanFormData.accountName} onChange={e => setLoanFormData({...loanFormData, accountName: e.target.value})} type="text" placeholder="Tên tài khoản" className="w-full form-input" />
+                                <input value={loanFormData.amount} onChange={e => setLoanFormData({...loanFormData, amount: e.target.value})} type="text" placeholder="Số tiền muốn ứng" className="w-full form-input" />
+                            </div>
+                             <div className="flex justify-center space-x-4 mt-6">
+                                <button onClick={() => setShowLoanModal(false)} className="secondary-btn px-6 py-2">Hủy</button>
+                                <button onClick={handleLoanRequest} disabled={!loanFormData.accountName.trim() || !loanFormData.amount.trim() || !!loanCooldown} className="primary-btn px-6 py-2" style={{'--primary-glow': 'var(--warning-glow)'}}>Xác nhận</button>
+                            </div>
+                        </Modal>
+                    </AnimatedPresence>
                 </Fragment>
             );
         };
 
         //================================================================================
-        // COMPONENT: AdminDashboard (No changes here)
+        // COMPONENT: AdminDashboard
         //================================================================================
         const AdminDashboard = ({ currentUser, onLogout }) => {
             const [conversations, setConversations] = useState([]);
@@ -631,7 +828,10 @@
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
             const [tableAnnounceInput, setTableAnnounceInput] = useState('');
+            const [warningInput, setWarningInput] = useState('');
+            const [editingMessage, setEditingMessage] = useState({ id: null, text: '' });
             const messagesEndRef = useRef(null);
+            const typingTimeoutRef = useRef(null);
 
             useEffect(() => {
                 const q = query(collection(db, 'user_chats'), orderBy('lastUpdate', 'desc'));
@@ -643,6 +843,12 @@
 
             useEffect(() => {
                 if (!currentChat) return;
+                if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                    const typingRef = ref(rtdb, `typing_status/${currentChat.id}`);
+                    set(typingRef, { isTyping: false });
+                }
+
                 const messagesColRef = collection(db, 'user_chats', currentChat.id, 'messages');
                 const q = query(messagesColRef, orderBy('timestamp'));
                 const unsub = onSnapshot(q, snapshot => {
@@ -655,10 +861,36 @@
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, [messages]);
 
+            const handleTyping = (e) => {
+                if (!currentChat) return;
+                setInputMessage(e.target.value);
+                
+                const typingRef = ref(rtdb, `typing_status/${currentChat.id}`);
+
+                if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                } else {
+                    set(typingRef, { isTyping: true });
+                }
+
+                typingTimeoutRef.current = setTimeout(() => {
+                    set(typingRef, { isTyping: false });
+                    typingTimeoutRef.current = null;
+                }, 2000);
+            };
+
             const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return;
-                const text = content || inputMessage.trim();
-                if (text === '') return;
+                const text = content ? content.text : inputMessage.trim();
+                if (text === '' && type === 'text') return;
+                
+                if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                    const typingRef = ref(rtdb, `typing_status/${currentChat.id}`);
+                    set(typingRef, { isTyping: false });
+                    typingTimeoutRef.current = null;
+                }
+
                 sfx.confirm();
                 const messagesColRef = collection(db, 'user_chats', currentChat.id, 'messages');
                 await addDoc(messagesColRef, {
@@ -675,9 +907,9 @@
             const handleSendBaccaratResult = (resultType) => {
                 let content;
                 switch(resultType) {
-                    case 'P': content = { result: 'P', color: 'blue-400' }; break;
-                    case 'B': content = { result: 'B', color: 'red-500' }; break;
-                    case 'H': content = { result: 'H', color: 'green-400' }; break;
+                    case 'P': content = { result: 'P', color: '#3498db' }; break;
+                    case 'B': content = { result: 'B', color: '#e74c3c' }; break;
+                    case 'H': content = { result: 'H', color: '#2ecc71' }; break;
                     default: return;
                 }
                 handleSendMessage('baccarat_result', content);
@@ -688,36 +920,97 @@
                 handleSendMessage('table_announcement', { text: tableAnnounceInput.trim() });
                 setTableAnnounceInput('');
             };
-
-            const handleDeleteHistory = async (userId) => {
-                if (window.confirm("Bạn có chắc muốn xóa toàn bộ lịch sử chat này?")) {
-                    sfx.error();
-                    const messagesColRef = collection(db, 'user_chats', userId, 'messages');
-                    const messagesSnapshot = await getDocs(messagesColRef);
-                    const batch = writeBatch(db);
-                    messagesSnapshot.forEach(doc => {
-                        batch.delete(doc.ref);
-                    });
-                    await batch.commit();
-                    if (currentChat?.id === userId) {
-                        setMessages([]);
-                    }
-                }
+            
+             const handleSendWarningMessage = () => {
+                if(warningInput.trim() === '') return;
+                sfx.warning();
+                handleSendMessage('warning', { text: warningInput.trim() });
+                setWarningInput('');
+            };
+            
+            const handleSendWaitMessage = () => {
+                handleSendMessage('wait_message', { text: 'XIN VUI LÒNG ĐỢI' });
             };
 
-             const MessageBubble = ({ children, isUser }) => {
-                const style = {
-                    clipPath: isUser 
-                        ? 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)'
-                        : 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)',
-                    background: isUser
-                        ? 'linear-gradient(135deg, rgba(60, 60, 80, 0.3), rgba(40, 40, 60, 0.2))'
-                        : 'linear-gradient(135deg, rgba(0, 130, 255, 0.2), rgba(0, 196, 255, 0.1))',
-                    border: '1px solid',
-                    borderColor: isUser ? 'rgba(100, 100, 120, 0.3)' : 'rgba(0, 221, 255, 0.3)'
+            const handleDeleteUserMessage = async (msgId) => {
+                if (!currentChat || !msgId) return;
+                if (window.confirm("Bạn có chắc muốn xóa tin nhắn này của người dùng?")) {
+                    sfx.error();
+                    const msgRef = doc(db, 'user_chats', currentChat.id, 'messages', msgId);
+                    await deleteDoc(msgRef);
+                }
+            };
+            
+            const handleStartEdit = (msg) => {
+                setEditingMessage({ id: msg.id, text: msg.text });
+            };
+
+            const handleSaveEdit = async () => {
+                if (!currentChat || !editingMessage.id) return;
+                const msgRef = doc(db, 'user_chats', currentChat.id, 'messages', editingMessage.id);
+                await updateDoc(msgRef, { text: editingMessage.text });
+                setEditingMessage({ id: null, text: '' });
+                sfx.confirm();
+            };
+
+            const MessageRenderer = ({ msg }) => {
+                const isUserMessage = msg.senderId !== currentUser.uid;
+                const isEditing = editingMessage.id === msg.id;
+
+                if (isEditing) {
+                    return (
+                        <div className="my-2 p-2 bg-white/10 rounded">
+                            <textarea 
+                                value={editingMessage.text} 
+                                onChange={(e) => setEditingMessage({...editingMessage, text: e.target.value})}
+                                className="w-full form-input bg-black/30 p-2"
+                            />
+                            <div className="flex justify-end space-x-2 mt-2">
+                                <button onClick={() => setEditingMessage({id: null, text: ''})} className="secondary-btn text-xs px-2 py-1">Hủy</button>
+                                <button onClick={handleSaveEdit} className="primary-btn text-xs px-2 py-1">Lưu</button>
+                            </div>
+                        </div>
+                    );
+                }
+                
+                const renderContent = () => {
+                    switch(msg.type) {
+                        case 'loan_request_details': return <p className="text-yellow-400 italic text-center">-- {msg.content.requestText} (Tài khoản: {msg.content.accountName}, Số tiền: {msg.content.amount}) --</p>;
+                        case 'baccarat_result': return <div className={`flex items-center justify-center w-24 h-24 rounded-full border-4`} style={{backgroundColor: msg.content.color, borderColor: msg.content.color, color: 'white', textShadow: '0 0 5px black'}}><span className="text-6xl font-black">{msg.content.result}</span></div>;
+                        case 'table_announcement': return <div className="p-4 border-2 border-[var(--warning-glow)] bg-yellow-900/30 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--warning-glow)'}}><h4 className="text-xl font-bold text-[var(--warning-glow)] uppercase tracking-widest">THÔNG BÁO BÀN</h4><p className="text-2xl font-bold text-white">{msg.content.text}</p></div>;
+                        case 'warning': return <div className="p-4 border-2 border-[var(--danger-glow)] bg-red-900/40 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--danger-glow)'}}><h4 className="text-xl font-bold text-[var(--danger-glow)] uppercase tracking-widest">CẢNH BÁO</h4><p className="text-xl font-semibold text-white">{msg.content.text}</p></div>;
+                        case 'wait_message': return <p className="text-cyan-300 italic text-center">-- {msg.content.text} --</p>;
+                        default: return <p className="text-white text-lg">{msg.text || JSON.stringify(msg.content)}</p>;
+                    }
                 };
-                return <div className="p-4" style={style}>{children}</div>
-            }
+                
+                const isSpecialMessage = ['baccarat_result', 'table_announcement', 'wait_message', 'loan_request_details', 'warning'].includes(msg.type);
+
+                if (isSpecialMessage) {
+                    return <div className="flex justify-center my-4">{renderContent()}</div>;
+                }
+
+                return (
+                     <div className={`group flex items-end gap-2 my-2 ${!isUserMessage ? 'justify-end' : 'justify-start'}`}>
+                        {isUserMessage && (
+                            <div className="hidden group-hover:flex items-center gap-2">
+                                <button onClick={() => handleStartEdit(msg)} className="text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg></button>
+                                <button onClick={() => handleDeleteUserMessage(msg.id)} className="text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            </div>
+                        )}
+                        <div className="max-w-lg">
+                             <div className="p-4" style={{
+                                clipPath: !isUserMessage ? 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)' : 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)',
+                                background: !isUserMessage ? 'linear-gradient(135deg, rgba(0, 130, 255, 0.2), rgba(0, 196, 255, 0.1))' : 'linear-gradient(135deg, rgba(60, 60, 80, 0.3), rgba(40, 40, 60, 0.2))',
+                                border: '1px solid',
+                                borderColor: !isUserMessage ? 'rgba(0, 221, 255, 0.3)' : 'rgba(100, 100, 120, 0.3)'
+                             }}>
+                                {renderContent()}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
 
             return (
                  <div className="h-screen w-screen flex items-center justify-center p-4">
@@ -756,33 +1049,28 @@
                                         <h2 className="text-xl font-bold text-white">Kênh: {currentChat.username}</h2>
                                     </header>
                                     <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                                        {messages.map(msg => {
-                                            const isUser = msg.senderId !== currentUser.uid;
-                                            return (
-                                                <div key={msg.id} className={`flex mb-4 ${!isUser ? 'justify-end' : 'justify-start'}`}>
-                                                    <div className="max-w-lg">
-                                                        <MessageBubble isUser={isUser}>
-                                                             <p className="text-white text-lg">{msg.text || JSON.stringify(msg.content)}</p>
-                                                        </MessageBubble>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                        {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} />)}
                                         <div ref={messagesEndRef} />
                                     </main>
                                     <footer className="p-4 border-t border-[var(--primary-glow)]/20 flex-shrink-0 space-y-3 bg-[rgba(1,4,17,0.8)]">
-                                        <div className="flex items-center space-x-2">
-                                            <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} type="text" placeholder="Gửi bàn..." className="w-full form-input text-sm !p-2" />
-                                            <button onClick={handleSendTableMessage} className="secondary-btn px-4 py-2 text-sm whitespace-nowrap">Gửi Bàn</button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex items-center space-x-2">
+                                                <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} type="text" placeholder="Gửi bàn..." className="w-full form-input text-sm !p-2" />
+                                                <button onClick={handleSendTableMessage} className="secondary-btn px-4 py-2 text-sm whitespace-nowrap">Gửi Bàn</button>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <input value={warningInput} onChange={e => setWarningInput(e.target.value)} type="text" placeholder="Nội dung cảnh báo..." className="w-full form-input text-sm !p-2 border-[var(--danger-glow)]" />
+                                                <button onClick={handleSendWarningMessage} className="secondary-btn px-4 py-2 text-sm whitespace-nowrap border-[var(--danger-glow)] text-[var(--danger-glow)]">Cảnh Báo</button>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-4 gap-2">
                                             <button onClick={() => handleSendBaccaratResult('P')} className="secondary-btn p-2 text-sm border-blue-400 text-blue-300">Nhà Con (P)</button>
                                             <button onClick={() => handleSendBaccaratResult('B')} className="secondary-btn p-2 text-sm border-red-400 text-red-300">Nhà Cái (B)</button>
                                             <button onClick={() => handleSendBaccaratResult('H')} className="secondary-btn p-2 text-sm border-green-400 text-green-300">Hòa (H)</button>
-                                            <button onClick={() => handleSendMessage('text', 'XIN VUI LÒNG ĐỢI')} className="secondary-btn p-2 text-sm">Đợi</button>
+                                            <button onClick={handleSendWaitMessage} className="secondary-btn p-2 text-sm">Đợi</button>
                                         </div>
                                         <div className="flex items-center space-x-2">
-                                            <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
+                                            <input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
                                             <button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button>
                                         </div>
                                     </footer>
