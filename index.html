@@ -3,118 +3,299 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQUARIUS AI - IMMERSIVE OS v10.1 (Admin Tools Fix)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <title>Aquarius V</title>
     
-    <!-- React & Babel -->
-    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-
-    <!-- Tone.js for Sound Effects -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+        }
+      }
+    </script>
 
     <style>
         :root {
-            --retro-green: #33ff33;
-            --dark-bg: #0a0a0a;
+            --primary-glow: #00ddff;
+            --secondary-glow: #f923a5;
+            --bg-color: #000000;
+            --border-size: 2px;
         }
+
         body {
-            font-family: 'VT323', monospace;
-            background-color: var(--dark-bg);
-            color: var(--retro-green);
-            text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--bg-color);
+            color: #E0E0E0;
             overflow: hidden;
         }
-        #starfield-canvas {
+        
+        h1, h2, h3, h4, h5, h6, .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .font-tech-mono {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        #bg-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
         }
-        .scanlines {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px;
-            animation: scan 0.1s linear infinite;
-            z-index: 9999;
+
+        /* --- Ultimate A.I. HUD Frame V5 --- */
+        .hud-frame {
+            background: rgba(1, 4, 17, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: relative;
+            padding: 2rem;
+            clip-path: polygon(0 30px, 30px 0, calc(100% - 30px) 0, 100% 30px, 100% calc(100% - 30px), calc(100% - 30px) 100%, 30px 100%, 0 calc(100% - 30px));
+            border: 1px solid rgba(0, 221, 255, 0.2);
         }
-        .crt-effect {
-            box-shadow: 0 0 25px rgba(51, 255, 51, 0.3), inset 0 0 25px rgba(51, 255, 51, 0.2);
-            border-radius: 20px;
-            animation: flicker 0.15s infinite;
+        .hud-frame.no-padding { padding: 0; }
+
+        .hud-frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background: 
+                linear-gradient(var(--primary-glow), var(--primary-glow)) left top,
+                linear-gradient(var(--primary-glow), var(--primary-glow)) right top,
+                linear-gradient(var(--primary-glow), var(--primary-glow)) left bottom,
+                linear-gradient(var(--primary-glow), var(--primary-glow)) right bottom;
+            background-repeat: no-repeat;
+            background-size: 2px 50px, 50px 2px;
+            animation: border-flicker 3s linear infinite;
         }
-        .retro-input, .retro-textarea {
-            background-color: transparent; border: 1px solid var(--retro-green); border-radius: 0;
-            color: var(--retro-green); padding: 8px; outline: none; resize: none;
+        .hud-frame::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -2;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(0, 221, 255, 0.1) 5px, rgba(0, 221, 255, 0.1) 6px),
+                repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(0, 221, 255, 0.1) 5px, rgba(0, 221, 255, 0.1) 6px);
+            animation: grid-move 10s linear infinite;
         }
-        .retro-input:focus, .retro-textarea:focus {
-            background-color: rgba(51, 255, 51, 0.1); box-shadow: 0 0 8px var(--retro-green);
+        @keyframes border-flicker { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        @keyframes grid-move { from { background-position: 0 0; } to { background-position: 100px 100px; } }
+
+        /* --- UI Elements V5 --- */
+        .form-input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid rgba(0, 221, 255, 0.3);
+            color: #FFF;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            padding: 0.5rem 0;
+            position: relative;
         }
-        .retro-button {
-            background-color: transparent; border: 1px solid var(--retro-green); color: var(--retro-green);
-            padding: 10px 15px; border-radius: 0; transition: all 0.2s; cursor: pointer;
+        .form-input:focus {
+            outline: none;
+            border-bottom-color: var(--primary-glow);
+            box-shadow: 0 5px 15px -5px var(--primary-glow);
         }
-        .retro-button:hover:not(:disabled) {
-            background-color: var(--retro-green); color: var(--dark-bg); text-shadow: none;
+        .primary-btn {
+            font-family: 'Orbitron', sans-serif;
+            background: transparent;
+            color: var(--primary-glow);
+            font-weight: 700;
+            transition: all 0.3s ease;
+            border: 2px solid var(--primary-glow);
+            padding: 0.75rem 1.5rem;
+            text-shadow: 0 0 10px var(--primary-glow);
+            box-shadow: 0 0 10px var(--primary-glow) inset, 0 0 10px var(--primary-glow);
+            position: relative;
+            overflow: hidden;
+            clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
         }
-        .retro-button:disabled { opacity: 0.4; cursor: not-allowed; }
-        .retro-container { background-color: rgba(0,0,0,0.8); border: 1px solid var(--retro-green); }
-        .retro-header { border-bottom: 1px solid var(--retro-green); padding: 0.75rem; text-transform: uppercase; }
-        .glitch-text { animation: glitch 1.5s linear infinite; }
-        .typing-cursor {
-            display: inline-block; width: 10px; height: 1.2em;
-            background-color: var(--retro-green);
-            animation: blink-caret 1s step-end infinite; vertical-align: bottom;
+        .primary-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            transition: all 0.5s ease;
         }
-        .blessing-glow {
-             animation: glowing-blessing 2s ease-in-out infinite;
+        .primary-btn:hover:not(:disabled)::after {
+            transform: translate(-50%, -50%) scale(100);
+            opacity: 0;
         }
-        .yellow-alert-flash {
-            animation: yellow-flash 1s 2;
+        .primary-btn:hover:not(:disabled) {
+            background: var(--primary-glow);
+            color: var(--bg-color);
+            box-shadow: 0 0 25px var(--primary-glow);
         }
-        .unread-indicator {
-            animation: pulse-yellow 2s infinite;
+        .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(50%); }
+
+        .secondary-btn {
+            font-family: 'Orbitron', sans-serif;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #FFF;
+            transition: all 0.3s ease;
         }
-        .text-shadow-baccarat {
-             text-shadow: 0 0 15px currentColor, 0 0 25px rgba(255, 255, 255, 0.3);
-        }
+        .secondary-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: #FFF; }
         
-        @keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 4px; } }
-        @keyframes glitch { 2%,64%{ transform: translate(2px,0) skew(0deg); } 4%,60%{ transform: translate(-2px,0) skew(0deg); } 62%{ transform: translate(0,0) skew(5deg); } }
-        @keyframes blink-caret { from, to { background-color: transparent; } 50% { background-color: var(--retro-green); } }
-        @keyframes flicker { 0% { opacity: 1; } 50% { opacity: 0.98; } 100% { opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes glowing-blessing {
-            0% { box-shadow: 0 0 5px var(--retro-green); }
-            50% { box-shadow: 0 0 20px var(--retro-green), 0 0 25px var(--retro-green); }
-            100% { box-shadow: 0 0 5px var(--retro-green); }
-        }
-        @keyframes yellow-flash {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); }
-            50% { box-shadow: 0 0 40px 20px rgba(255, 255, 0, 0.6), inset 0 0 25px rgba(255, 255, 0, 0.5); }
-        }
-        @keyframes pulse-yellow {
-            0% { color: #eab308; } /* yellow-400 */
-            50% { color: #fef08a; } /* yellow-200 */
-            100% { color: #eab308; } /* yellow-400 */
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--primary-glow); box-shadow: 0 0 10px var(--primary-glow); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
+        
     </style>
 </head>
 <body>
+    <canvas id="bg-canvas"></canvas>
     <div id="root"></div>
-    <div class="scanlines"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <script type="module">
+        // Three.js background setup (no changes here)
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 
-        // --- REAL FIREBASE CONFIG ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.querySelector('#bg-canvas'),
+            alpha: true,
+            antialias: true,
+        });
+
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        camera.position.set(0, 20, 45);
+
+        const coreGroup = new THREE.Group();
+        scene.add(coreGroup);
+
+        const CYLINDER_RADIUS = 20;
+        const CYLINDER_HEIGHT = 100;
+        const NUM_PARTICLES = 10000;
+        const NUM_RINGS = 10;
+
+        const particlePositions = new Float32Array(NUM_PARTICLES * 3);
+        const particleData = [];
+        for (let i = 0; i < NUM_PARTICLES; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const y = (Math.random() - 0.5) * CYLINDER_HEIGHT;
+            particlePositions[i * 3] = Math.cos(angle) * CYLINDER_RADIUS;
+            particlePositions[i * 3 + 1] = y;
+            particlePositions[i * 3 + 2] = Math.sin(angle) * CYLINDER_RADIUS;
+            particleData.push({
+                speed: Math.random() * 0.1 + 0.02,
+                angle: angle,
+            });
+        }
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x00ddff,
+            size: 0.1,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            depthWrite: false,
+        });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        coreGroup.add(particles);
+
+        const ringGeometry = new THREE.TorusGeometry(CYLINDER_RADIUS, 0.1, 16, 200);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x00ddff, transparent: true, opacity: 0.2 });
+        for (let i = 0; i < NUM_RINGS; i++) {
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = (i - NUM_RINGS / 2) * (CYLINDER_HEIGHT / NUM_RINGS) + Math.random() * 5 - 2.5;
+            coreGroup.add(ring);
+        }
+        
+        const beamGeo = new THREE.CylinderGeometry(0.5, 0.5, CYLINDER_HEIGHT * 2, 32, 1, true);
+        const beamMat = new THREE.ShaderMaterial({
+            uniforms: { time: { value: 0 } },
+            vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+            fragmentShader: 'uniform float time; varying vec2 vUv; void main() { float alpha = pow(sin(vUv.y * 3.14159 + time * 2.0) * 0.5 + 0.5, 2.0); gl_FragColor = vec4(0.0, 0.8, 1.0, alpha * 0.2); }',
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const beam = new THREE.Mesh(beamGeo, beamMat);
+        coreGroup.add(beam);
+
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.1;
+        bloomPass.strength = 1.2;
+        bloomPass.radius = 0.5;
+        composer.addPass(bloomPass);
+        const filmPass = new FilmPass(0.15, 0.025, 648, false);
+        composer.addPass(filmPass);
+
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (event) => {
+            mouseX = event.clientX / window.innerWidth - 0.5;
+            mouseY = event.clientY / window.innerHeight - 0.5;
+        });
+
+        const clock = new THREE.Clock();
+        const animate = () => {
+            const elapsedTime = clock.getElapsedTime();
+            const positions = particles.geometry.attributes.position.array;
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                positions[i * 3 + 1] += particleData[i].speed;
+                if(positions[i * 3 + 1] > CYLINDER_HEIGHT / 2) {
+                    positions[i * 3 + 1] = -CYLINDER_HEIGHT / 2;
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            camera.position.x += (mouseX * 20 - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY * 20 - (camera.position.y - 20)) * 0.05;
+            camera.lookAt(scene.position);
+            coreGroup.rotation.y = elapsedTime * 0.05;
+            beamMat.uniforms.time.value = elapsedTime;
+            composer.render();
+            window.requestAnimationFrame(animate);
+        };
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+
+    <script type="text/babel" data-type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        
+        const { useState, useEffect, useRef, Fragment } = React;
+
+        // --- FIREBASE CONFIG (Sử dụng config của bạn) ---
         const firebaseConfig = {
             apiKey: "AIzaSyCHDzGbXmHNWKL2UtRm57vPRVxZb31dHto",
             authDomain: "long-bao-tool-ai.firebaseapp.com",
@@ -122,197 +303,91 @@
             storageBucket: "long-bao-tool-ai.appspot.com",
             messagingSenderId: "259613170671",
             appId: "1:259613170671:web:55291d0b0af4e69052b41a",
-            measurementId: "G-7V7H3JWX7K"
+            measurementId: "G-7V7H3JWX7K",
+            databaseURL: "https://long-bao-tool-ai-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
         const ADMIN_USERNAME = "admin";
         const DUMMY_DOMAIN = "@long-bao-tool-ai.web.app";
 
-        // --- FIREBASE INIT ---
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const rtdb = firebase.database();
+        // --- FIREBASE INITIALIZATION ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rtdb = getDatabase(app);
 
-        // --- GAME DATA & CONSTANTS ---
+        // --- GLOBAL CONSTANTS ---
         const BACARAT_TABLES = ["BACARAT C04", "BACARAT C05", "BACARAT C06", "BACARAT C07", "BACARAT C01", "BACARAT C02", "BACARAT C03", "BACARAT C08", "BACARAT C09", "BACARAT C10", "BACARAT 1", "BACARAT 2", "BACARAT 3", "BACARAT 4", "BACARAT 5", "BACARAT 7", "BACARAT 8", "BACARAT 9", "BACARAT 10", "BACARAT C11", "BACARAT C12", "BACARAT C13", "BACARAT C15"];
-        const COOLDOWN_DURATION = 24 * 60 * 60 * 1000;
-        const DAILY_QUESTION_LIMIT = 2;
-
-        // --- SOUND SERVICE ---
-        const soundService = {
-            isStarted: false, synth: null, noise: null, ambient: null,
-            init() {
-                if (this.isStarted || typeof Tone === 'undefined') return;
-                this.synth = new Tone.Synth().toDestination();
-                this.noise = new Tone.NoiseSynth({ volume: -20 }).toDestination();
-                this.ambient = new Tone.Noise("brown").toDestination();
-                this.ambient.volume.value = -40;
-                this.isStarted = true;
-            },
-            startAmbient() { if(this.ambient && this.ambient.state !== 'started') this.ambient.start(); },
-            stopAmbient() { if(this.ambient) this.ambient.stop(); },
-            playClick() { this.synth?.triggerAttackRelease("C2", "8n"); },
-            playSend() { this.synth?.triggerAttackRelease("G4", "8n"); },
-            playReceive() { this.synth?.triggerAttackRelease("C5", "8n"); },
-            playError() { this.noise?.triggerAttackRelease("2n"); },
-            playTyping() { this.synth?.triggerAttackRelease("C3", "32n"); },
-            playAlert() {
-                 if (!this.isStarted) this.init();
-                 const synth = new Tone.Synth({
-                    oscillator: { type: 'square' },
-                    envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 }
-                }).toDestination();
-                synth.triggerAttackRelease('G5', '8n', Tone.now());
-                synth.triggerAttackRelease('G5', '8n', Tone.now() + 0.2);
-            }
+        
+        // --- SOUND FX ---
+        const sfx = {
+            boot: () => new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } }).toDestination().triggerAttackRelease("C3", "8n"),
+            typing: new Tone.MembraneSynth({ pitchDecay: 0.008, octaves: 2, envelope: { attack: 0.0006, decay: 0.1, sustain: 0 } }).toDestination(),
+            confirm: () => new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2 } }).toDestination().triggerAttackRelease("C5", "8n"),
+            logout: () => new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 0.2 } }).toDestination().triggerAttackRelease("C4", "4n"),
+            error: () => new Tone.NoiseSynth({ noise: { type: "pink" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination().triggerAttackRelease("8n"),
+            notification: () => new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } }).toDestination().triggerAttackRelease("G5", "16n", Tone.now() + 0.1).triggerAttackRelease("C6", "16n", Tone.now() + 0.2),
+            glitch: () => new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, decay: 0.05, sustain: 0 } }).toDestination().triggerAttackRelease("16n"),
         };
 
-        //================================================================================
-        // COMPONENT: Starfield
-        //================================================================================
-        const Starfield = () => {
-            const canvasRef = useRef(null);
+        // --- HELPER COMPONENTS & HOOKS ---
+        const AnimatedPresence = ({ isVisible, children }) => {
+            const [shouldRender, setShouldRender] = useState(isVisible);
             useEffect(() => {
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                let stars = [];
-                const numStars = 300;
-                let animationFrameId;
-
-                const resizeCanvas = () => {
-                    canvas.width = window.innerWidth;
-                    canvas.height = window.innerHeight;
-                    stars = [];
-                    for (let i = 0; i < numStars; i++) {
-                        stars.push({
-                            x: Math.random() * canvas.width,
-                            y: Math.random() * canvas.height,
-                            size: Math.random() * 1.5,
-                            speed: Math.random() * 0.5 + 0.1
-                        });
+                if (isVisible) setShouldRender(true);
+                else { const timer = setTimeout(() => setShouldRender(false), 500); return () => clearTimeout(timer); }
+            }, [isVisible]);
+            if (!shouldRender) return null;
+            return React.cloneElement(children, { className: `${children.props.className || ''} ${isVisible ? 'fade-in' : 'fade-out'}` });
+        };
+        
+        const useDecryptingText = (targetText, start) => {
+            const [text, setText] = useState('');
+            const chars = '!<>-_\\/[]{}—=+*^?#________';
+            
+            useEffect(() => {
+                if (!start) return;
+                let frameRequest;
+                let frame = 0;
+                const animate = () => {
+                    frame++;
+                    const progress = frame / 30; // Control speed
+                    let newText = '';
+                    for (let i = 0; i < targetText.length; i++) {
+                        if (i < progress * targetText.length) {
+                            newText += targetText[i];
+                        } else {
+                            newText += chars[Math.floor(Math.random() * chars.length)];
+                        }
+                    }
+                    setText(newText);
+                    if (progress < 1) {
+                         if(frame % 3 === 0) sfx.glitch();
+                         frameRequest = requestAnimationFrame(animate);
+                    } else {
+                        setText(targetText);
+                        sfx.confirm();
                     }
                 };
+                
+                const timeoutId = setTimeout(() => {
+                    frameRequest = requestAnimationFrame(animate);
+                }, 500);
 
-                const animate = () => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = 'rgba(51, 255, 51, 0.8)';
-                    stars.forEach(star => {
-                        star.y += star.speed;
-                        if (star.y > canvas.height) {
-                            star.y = 0;
-                            star.x = Math.random() * canvas.width;
-                        }
-                        ctx.beginPath();
-                        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    animationFrameId = requestAnimationFrame(animate);
-                };
 
-                resizeCanvas();
-                animate();
-                window.addEventListener('resize', resizeCanvas);
                 return () => {
-                    window.removeEventListener('resize', resizeCanvas);
-                    cancelAnimationFrame(animationFrameId);
+                    cancelAnimationFrame(frameRequest);
+                    clearTimeout(timeoutId);
                 }
-            }, []);
-            return <canvas id="starfield-canvas" ref={canvasRef}></canvas>;
+            }, [targetText, start]);
+            
+            return text;
         };
 
-        //================================================================================
-        // COMPONENT: LoadingMessage
-        //================================================================================
-        const LoadingMessage = ({ text }) => {
-            const [progress, setProgress] = useState(0);
-            const [isComplete, setIsComplete] = useState(false);
-
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    setProgress(prev => {
-                        if (prev >= 100) {
-                            clearInterval(timer);
-                            setIsComplete(true);
-                            return 100;
-                        }
-                        return prev + 1;
-                    });
-                }, 30);
-                return () => clearInterval(timer);
-            }, []);
-
-            if (isComplete) {
-                return <p style={{animation: 'fadeIn 0.5s forwards'}}>{text}</p>;
-            }
-
-            return (
-                <div className="w-full">
-                    <p className="text-center text-sm mb-1">ĐANG XỬ LÝ LỆNH... {progress}%</p>
-                    <div className="w-full bg-gray-800 border border-green-700 h-4">
-                        <div className="bg-green-500 h-full" style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}></div>
-                    </div>
-                </div>
-            );
-        };
-
-        //================================================================================
-        // COMPONENT: MessageContent
-        //================================================================================
-        const MessageContent = ({ msg }) => {
-            const content = (
-                <>
-                    {msg.type === 'system' && <p className="text-yellow-300 w-full text-center">{msg.text}</p>}
-                    {msg.type === 'plea' && <p className="opacity-80 italic">Lời thỉnh cầu: "{msg.text}"</p>}
-                    {msg.type === 'table_announcement' && (
-                        <div className="text-center my-2 p-3 border-2 border-yellow-400 bg-yellow-900 bg-opacity-50">
-                            <p className="text-yellow-300 text-lg glitch-text uppercase">!!! CHÚ Ý BÀN !!!</p>
-                            <p className="text-white text-2xl font-bold">{msg.text}</p>
-                        </div>
-                    )}
-                    {msg.type === 'baccarat_result' && (() => {
-                        const colorClass = {
-                            'blue-400': 'text-blue-400',
-                            'red-500': 'text-red-500',
-                            'green-400': 'text-green-400'
-                        }[msg.content.color] || 'text-white';
-                        return (
-                            <div className="text-center my-2 p-4">
-                                <p className={`text-9xl font-bold text-shadow-baccarat ${colorClass}`}>
-                                    {msg.content.result}
-                                </p>
-                            </div>
-                        );
-                    })()}
-                    {msg.type === 'blessing' && (
-                        <div className="border-2 border-green-400 p-4 mt-1 blessing-glow text-center">
-                            <p className="text-2xl glitch-text text-green-300 uppercase">Lời Ban Phước</p>
-                            <div className="mt-4 text-left space-y-2">
-                                <p className="text-lg"><span className="font-bold text-green-400 w-24 inline-block">SỐ BÀN:</span> <span className="text-white text-xl font-bold">{msg.content.table}</span></p>
-                                <p className="text-lg"><span className="font-bold text-green-400 w-24 inline-block">KẾT QUẢ:</span> <span className="text-white text-xl font-bold">{msg.content.side}</span></p>
-                                <p className="text-lg"><span className="font-bold text-green-400 w-24 inline-block">TAY THỨ:</span> <span className="text-white text-xl font-bold">{msg.content.hand}</span></p>
-                            </div>
-                        </div>
-                    )}
-                    {msg.type === 'info_submission' && (
-                        <div className="border border-cyan-700 p-2 mt-1">
-                            <p className="glitch-text text-center text-lg text-cyan-400">BÁO CÁO KHỞI TẠO</p>
-                            <p>> TÀI KHOẢN F168: {msg.content.f168Account}</p>
-                            <p>> SỐ VỐN: {msg.content.capital}</p>
-                            <p>> MỤC TIÊU: {msg.content.target}</p>
-                        </div>
-                    )}
-                    {msg.type === 'text' && <p>{msg.text}</p>}
-                    {msg.type === 'loading_message' && <LoadingMessage text={msg.text} />}
-                </>
-            );
-
-            return (
-                <div>
-                    {content}
-                    {msg.edited && <span className="text-xs opacity-60 italic ml-2">(đã sửa)</span>}
-                </div>
-            );
-        };
+        const Modal = ({ children, onClose }) => (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 fade-in" onClick={onClose}>
+                <div className="w-full max-w-md hud-frame" onClick={e => e.stopPropagation()}>{children}</div>
+            </div>
+        );
         
         //================================================================================
         // COMPONENT: LoginScreen
@@ -322,106 +397,82 @@
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
             const [isLoading, setIsLoading] = useState(false);
-            const [booting, setBooting] = useState(true);
-            const [bootLines, setBootLines] = useState([]);
+            const [startDecrypt, setStartDecrypt] = useState(false);
 
             useEffect(() => {
-                const bootSequence = [
-                    'AQUARIUS OS v10.1 INITIALIZING...',
-                    'CHECKING MEMORY... OK',
-                    'LOADING CORE MODULES... OK',
-                    'ESTABLISHING FIREBASE CONNECTION... SECURE',
-                    'AWAITING PILOT AUTHENTICATION...'
-                ];
-                let index = 0;
-                const interval = setInterval(() => {
-                    soundService.playTyping();
-                    setBootLines(prev => [...prev, bootSequence[index]]);
-                    index++;
-                    if (index >= bootSequence.length) {
-                        clearInterval(interval);
-                        setTimeout(() => setBooting(false), 500);
-                    }
-                }, 600);
-                return () => clearInterval(interval);
+                // Start decryption effect after a short delay
+                const timer = setTimeout(() => setStartDecrypt(true), 100);
+                return () => clearTimeout(timer);
             }, []);
 
-            const handleLogin = async () => {
-                setError(''); setIsLoading(true);
-                const processedUsername = username.trim().toLowerCase();
-                if (!processedUsername || !password) { setError("LỖI: THIẾU TÍN HIỆU"); setIsLoading(false); return; }
-                const email = processedUsername + DUMMY_DOMAIN;
-                try { await auth.signInWithEmailAndPassword(email, password); } 
-                catch (err) { setError("LỖI: XÁC THỰC THẤT BẠI"); } 
-                finally { setIsLoading(false); }
+            const titleText = useDecryptingText("AQUARIUS V", startDecrypt);
+            const subtitleText = useDecryptingText("SIÊU TRÍ TUỆ", startDecrypt);
+            const userPlaceholder = useDecryptingText("Mã hiệu Pilot", startDecrypt);
+            const passPlaceholder = useDecryptingText("Mật khẩu", startDecrypt);
+            const connectButton = useDecryptingText("KẾT NỐI", startDecrypt);
+            const createButton = useDecryptingText("Chưa có tài khoản? Khởi tạo", startDecrypt);
+
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setIsLoading(true); setError('');
+                await Tone.start();
+                const email = username.trim().toLowerCase() + DUMMY_DOMAIN;
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    sfx.confirm();
+                } catch (err) {
+                    sfx.error();
+                    setError("Xác thực thất bại. Vui lòng kiểm tra lại.");
+                } finally {
+                    setIsLoading(false);
+                }
             };
             
             const handleSignup = async () => {
-                setError(''); setIsLoading(true);
+                setIsLoading(true); setError('');
+                await Tone.start();
                 const processedUsername = username.trim().toLowerCase();
-                if (!processedUsername || !password) { setError("LỖI: THIẾU TÍN HIỆU"); setIsLoading(false); return; }
-                if (password.length < 6) { setError("LỖI: MẬT KHẨU QUÁ NGẮN (TỐI THIỂU 6 KÝ TỰ)"); setIsLoading(false); return; }
+                if (!processedUsername || !password) { sfx.error(); setError("Vui lòng nhập đủ thông tin."); setIsLoading(false); return; }
+                if (password.length < 6) { sfx.error(); setError("Mật khẩu phải có ít nhất 6 ký tự."); setIsLoading(false); return; }
                 
+                const email = processedUsername + DUMMY_DOMAIN;
                 try {
-                    const usersRef = db.collection("users");
-                    const existingUserQuery = await usersRef.where("username", "==", processedUsername).get();
-                    if (!existingUserQuery.empty) {
-                        setError("LỖI: MÃ HIỆU PILOT ĐÃ TỒN TẠI");
-                        setIsLoading(false);
-                        return;
-                    }
-
-                    const email = processedUsername + DUMMY_DOMAIN;
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    await db.collection("users").doc(userCredential.user.uid).set({
-                        uid: userCredential.user.uid,
-                        username: processedUsername,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        energy: 7,
-                        hasSubmittedInfo: false,
-                        dailyQuestionCount: 0,
-                        lastQuestionTimestamp: null,
-                        lastBlessingTimestamp: null
-                    }, { merge: true });
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const userDocRef = doc(db, "users", userCredential.user.uid);
+                    await setDoc(userDocRef, {
+                        uid: userCredential.user.uid, username: processedUsername, createdAt: serverTimestamp(),
+                        energy: 7, hasSubmittedInfo: false, dailyQuestionCount: 0, lastQuestionTimestamp: null, lastBlessingTimestamp: null
+                    });
+                    sfx.confirm();
                 } catch (err) {
-                    if (err.code === 'auth/email-already-in-use') { setError("LỖI: MÃ HIỆU PILOT ĐÃ TỒN TẠI"); } 
-                    else { setError("LỖI: KHỞI TẠO PILOT THẤT BẠI"); }
-                } finally { setIsLoading(false); }
+                    sfx.error();
+                    if (err.code === 'auth/email-already-in-use') setError("Mã hiệu này đã được sử dụng.");
+                    else setError("Không thể tạo tài khoản mới.");
+                } finally {
+                    setIsLoading(false);
+                }
             };
 
-            if (booting) {
-                return (
-                    <div className="min-h-screen bg-black flex items-center justify-center">
-                        <div className="w-full max-w-2xl p-4">
-                            {bootLines.map((line, i) => <p key={i} className="text-lg">> {line}</p>)}
-                            <span className="typing-cursor"></span>
-                        </div>
-                    </div>
-                );
-            }
-
             return (
-                 <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{animation: 'fadeIn 1s forwards'}}>
-                    <div className="w-full max-w-md p-4 sm:p-8 space-y-4 retro-container">
-                        <h2 className="text-3xl sm:text-4xl text-center glitch-text">AQUARIUS OS</h2>
-                        <p className="text-center text-md sm:text-lg">> YÊU CẦU XÁC THỰC PILOT</p>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-md sm:text-lg">> MÃ HIỆU PILOT:</label>
-                                <input value={username} onChange={e => setUsername(e.target.value)} type="text" required className="w-full mt-1 retro-input" />
-                            </div>
-                            <div>
-                                <label className="text-md sm:text-lg">> MẬT KHẨU:</label>
-                                <input value={password} onChange={e => setPassword(e.target.value)} type="password" required className="w-full mt-1 retro-input" />
-                            </div>
-                            {error && <div className="text-md sm:text-lg text-center py-2 bg-red-900 bg-opacity-50 border border-red-500">{error}<span className="typing-cursor"></span></div>}
-                            <div className="flex items-center space-x-4">
-                                <button onClick={handleLogin} disabled={isLoading} className="w-full retro-button">{isLoading ? 'ĐANG KẾT NỐI...' : 'KẾT NỐI'}</button>
-                                <button onClick={handleSignup} disabled={isLoading} className="w-full retro-button">KHỞI TẠO</button>
-                            </div>
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="w-full max-w-md hud-frame">
+                        <div className="text-center mb-8">
+                            <h1 className="text-4xl font-black text-white font-orbitron">{titleText}</h1>
+                            <p className="text-[var(--primary-glow)] tracking-[0.3em] font-bold font-tech-mono">{subtitleText}</p>
                         </div>
-                        <div className="text-center pt-4 border-t border-green-900">
-                            <a href="https://t.me/longbaoF168" target="_blank" rel="noopener noreferrer" className="retro-button">LIÊN HỆ LONG BẢO</a>
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={() => sfx.typing.triggerAttack("C1")} type="text" placeholder={userPlaceholder} className="w-full form-input font-tech-mono" />
+                            <input value={password} onChange={e => setPassword(e.target.value)} onKeyDown={() => sfx.typing.triggerAttack("C1")} type="password" placeholder={passPlaceholder} className="w-full form-input font-tech-mono" />
+                            {error && <p className="text-red-400 text-center text-sm font-semibold">{error}</p>}
+                            <button type="submit" disabled={isLoading} className="w-full primary-btn">
+                                {isLoading ? 'ĐANG KẾT NỐI...' : connectButton}
+                            </button>
+                        </form>
+                        <div className="text-center mt-6">
+                            <button onClick={handleSignup} disabled={isLoading} className="font-semibold text-[var(--primary-glow)] hover:text-white text-sm font-tech-mono">
+                               {createButton}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -429,81 +480,199 @@
         };
         
         //================================================================================
-        // COMPONENT: AdminDashboard
+        // COMPONENT: UserView (No changes here)
+        //================================================================================
+        const UserView = ({ currentUser, onLogout }) => {
+            const [messages, setMessages] = useState([]);
+            const [inputMessage, setInputMessage] = useState('');
+            const [userData, setUserData] = useState(null);
+            const [showBlessingModal, setShowBlessingModal] = useState(false);
+            const [showInfoModal, setShowInfoModal] = useState(false);
+            const [plea, setPlea] = useState('');
+            const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+            useEffect(() => {
+                if (!currentUser) return;
+                const userDocRef = doc(db, 'users', currentUser.uid);
+                const unsubUser = onSnapshot(userDocRef, (doc) => {
+                    if (doc.exists()) {
+                        setUserData(doc.data());
+                        if(doc.data().hasSubmittedInfo !== true) setShowInfoModal(true);
+                    }
+                });
+                const messagesColRef = collection(db, 'user_chats', currentUser.uid, 'messages');
+                const q = query(messagesColRef, orderBy('timestamp'));
+                const unsubMessages = onSnapshot(q, (snapshot) => {
+                    if(!snapshot.metadata.hasPendingWrites && snapshot.docChanges().some(change => change.type === 'added')) {
+                        sfx.notification();
+                    }
+                    setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+                return () => { unsubUser(); unsubMessages(); };
+            }, [currentUser]);
+
+            const handleSendMessage = async () => {
+                const content = inputMessage.trim();
+                if (content === '') return;
+                sfx.confirm();
+                const username = currentUser.email.split('@')[0];
+                const messagesColRef = collection(db, 'user_chats', currentUser.uid, 'messages');
+                await addDoc(messagesColRef, { type: 'text', text: content, senderId: currentUser.uid, timestamp: serverTimestamp() });
+                await setDoc(doc(db, 'user_chats', currentUser.uid), { lastUpdate: serverTimestamp(), username: username, userId: currentUser.uid, isRead: false }, { merge: true });
+                setInputMessage('');
+            };
+            
+            const handleBlessingRequest = async () => {
+                if(plea.trim() === '') return;
+                sfx.confirm();
+                setShowBlessingModal(false);
+                const blessing = { table: BACARAT_TABLES[Math.floor(Math.random() * BACARAT_TABLES.length)], side: Math.random() < 0.5 ? 'NHÀ CON' : 'NHÀ CÁI', hand: Math.floor(Math.random() * 16) + 15 };
+                await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'blessing', content: blessing, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp() });
+                setPlea('');
+            };
+
+            const handleInfoSubmit = async () => {
+                const { f168Account, capital, target } = infoFormData;
+                if (!f168Account || !capital || !target) return;
+                sfx.confirm();
+                await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'info_submission', content: { f168Account, capital, target }, senderId: currentUser.uid, timestamp: serverTimestamp() });
+                await updateDoc(doc(db, 'users', currentUser.uid), { hasSubmittedInfo: true });
+                setShowInfoModal(false);
+            };
+
+            if (!userData) return null;
+            
+            const MessageBubble = ({ children, isUser }) => {
+                const style = {
+                    clipPath: isUser 
+                        ? 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)' 
+                        : 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)',
+                    background: isUser
+                        ? 'linear-gradient(135deg, rgba(0, 130, 255, 0.2), rgba(0, 196, 255, 0.1))'
+                        : 'linear-gradient(135deg, rgba(60, 60, 80, 0.3), rgba(40, 40, 60, 0.2))',
+                    border: '1px solid',
+                    borderColor: isUser ? 'rgba(0, 221, 255, 0.3)' : 'rgba(100, 100, 120, 0.3)'
+                };
+                return <div className="p-4" style={style}>{children}</div>
+            }
+
+            return (
+                <Fragment>
+                    <div className="h-screen w-screen flex items-center justify-center p-4">
+                        <div className="w-full h-full max-w-4xl hud-frame flex flex-col">
+                            <header className="flex justify-between items-center p-4 flex-shrink-0">
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
+                                    <p className="text-sm text-[var(--primary-glow)]">Năng lượng: {userData.energy}</p>
+                                </div>
+                                <button onClick={onLogout} className="secondary-btn px-4 py-2">Ngắt kết nối</button>
+                            </header>
+                            
+                            <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                               {messages.map(msg => {
+                                   const isUser = msg.senderId === currentUser.uid;
+                                   const MessageContent = () => {
+                                        switch(msg.type) {
+                                            case 'blessing': return (<div className="p-4 border-2 border-[var(--secondary-glow)] rounded-lg text-center space-y-1 shadow-[0_0_20px_var(--secondary-glow)]"><p className="text-lg font-bold text-white uppercase tracking-widest">Lời Ban Phước</p><p><span className="font-semibold text-[var(--primary-glow)]">Bàn:</span> {msg.content.table}</p><p><span className="font-semibold text-[var(--primary-glow)]">Kết quả:</span> {msg.content.side}</p><p><span className="font-semibold text-[var(--primary-glow)]">Tay thứ:</span> {msg.content.hand}</p></div>);
+                                            case 'info_submission': return (<div className="space-y-1 text-sm"><p className="font-bold text-center text-[var(--primary-glow)]">BÁO CÁO KHỞI TẠO</p><p>Tài khoản F168: {msg.content.f168Account}</p><p>Số vốn: {msg.content.capital}</p><p>Mục tiêu: {msg.content.target}</p></div>);
+                                            default: return <p className="text-white text-lg">{msg.text}</p>;
+                                        }
+                                   };
+                                   return (<div key={msg.id} className={`flex mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}><div className="max-w-lg"><MessageBubble isUser={isUser}><MessageContent /></MessageBubble></div></div>);
+                               })}
+                               <div ref={messagesEndRef} />
+                            </main>
+
+                            <footer className="p-4 flex-shrink-0">
+                                <div className="flex items-center space-x-4">
+                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input" />
+                                    <button onClick={handleSendMessage} className="primary-btn px-6">Gửi</button>
+                                </div>
+                            </footer>
+                        </div>
+                    </div>
+                    
+                    <AnimatedPresence isVisible={showBlessingModal}>
+                        <Modal onClose={() => setShowBlessingModal(false)}>
+                            <h3 className="text-2xl font-bold text-center mb-4 text-white">Truyền Tải Thỉnh Cầu</h3>
+                            <textarea value={plea} onChange={e => setPlea(e.target.value)} className="w-full h-24 p-3 form-input bg-[rgba(0,0,0,0.3)]" placeholder="Viết lời thỉnh cầu của bạn..."></textarea>
+                            <div className="flex justify-end space-x-4 mt-4">
+                                <button onClick={() => setShowBlessingModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
+                                <button onClick={handleBlessingRequest} className="primary-btn px-4 py-2">Gửi</button>
+                            </div>
+                        </Modal>
+                    </AnimatedPresence>
+                     <AnimatedPresence isVisible={showInfoModal}>
+                         <Modal onClose={() => {}}>
+                            <h3 className="text-2xl font-bold text-center mb-4 text-white">Yêu Cầu Khai Báo</h3>
+                            <div className="space-y-4">
+                                <input value={infoFormData.f168Account} onChange={e => setInfoFormData({...infoFormData, f168Account: e.target.value})} type="text" placeholder="Tên TK F168" className="w-full form-input" />
+                                <input value={infoFormData.capital} onChange={e => setInfoFormData({...infoFormData, capital: e.target.value})} type="text" placeholder="Số vốn" className="w-full form-input" />
+                                <input value={infoFormData.target} onChange={e => setInfoFormData({...infoFormData, target: e.target.value})} type="text" placeholder="Muốn lên bao nhiêu" className="w-full form-input" />
+                            </div>
+                            <div className="flex justify-end mt-6">
+                                <button onClick={handleInfoSubmit} className="primary-btn w-full">Gửi Báo Cáo</button>
+                            </div>
+                        </Modal>
+                    </AnimatedPresence>
+                </Fragment>
+            );
+        };
+
+        //================================================================================
+        // COMPONENT: AdminDashboard (No changes here)
         //================================================================================
         const AdminDashboard = ({ currentUser, onLogout }) => {
             const [conversations, setConversations] = useState([]);
             const [currentChat, setCurrentChat] = useState(null);
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
-            const [onlineCount, setOnlineCount] = useState(0);
             const [tableAnnounceInput, setTableAnnounceInput] = useState('');
-            const [editingMessage, setEditingMessage] = useState(null);
-            const [activeMenu, setActiveMenu] = useState(null);
-            const [showConfirmModal, setShowConfirmModal] = useState(false);
-            const [actionToConfirm, setActionToConfirm] = useState(null);
-            const [notification, setNotification] = useState(''); // NEW: Notification state
-            const messagesListRef = useRef(null);
-            const unsubscribeMessages = useRef(null);
-
-            // NEW: Function to display notifications
-            const showNotification = (message) => {
-                setNotification(message);
-                setTimeout(() => {
-                    setNotification('');
-                }, 4000);
-            };
+            const messagesEndRef = useRef(null);
 
             useEffect(() => {
-                const convRef = db.collection('user_chats').orderBy('lastUpdate', 'desc');
-                const unsubConv = convRef.onSnapshot(snapshot => {
+                const q = query(collection(db, 'user_chats'), orderBy('lastUpdate', 'desc'));
+                const unsub = onSnapshot(q, snapshot => {
                     setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                }, console.error);
-                
-                const statusRef = rtdb.ref('status');
-                const unsubStatus = statusRef.on('value', snapshot => {
-                    if (snapshot && typeof snapshot.val === 'function') {
-                        const statuses = snapshot.val() || {};
-                        const count = Object.values(statuses).filter(s => s.isOnline).length;
-                        setOnlineCount(count);
-                    }
                 });
-
-                return () => {
-                    unsubConv();
-                    unsubStatus();
-                    if (unsubscribeMessages.current) {
-                        unsubscribeMessages.current();
-                    }
-                };
+                return () => unsub();
             }, []);
-            
+
             useEffect(() => {
-                if (messagesListRef.current) {
-                    messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
-                }
+                if (!currentChat) return;
+                const messagesColRef = collection(db, 'user_chats', currentChat.id, 'messages');
+                const q = query(messagesColRef, orderBy('timestamp'));
+                const unsub = onSnapshot(q, snapshot => {
+                    setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+                return () => unsub();
+            }, [currentChat]);
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, [messages]);
 
-            const loadConversation = (conv) => {
-                setCurrentChat(conv);
-                setEditingMessage(null);
-                setActiveMenu(null);
-                if (conv.isRead === false) {
-                    db.collection('user_chats').doc(conv.id).update({ isRead: true }).catch(console.error);
-                }
-                
-                if (unsubscribeMessages.current) {
-                    unsubscribeMessages.current();
-                }
-                const messagesRef = db.collection('user_chats').doc(conv.id).collection('messages').orderBy('timestamp');
-                unsubscribeMessages.current = messagesRef.onSnapshot(snapshot => {
-                    setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                }, console.error);
-            };
-            
-            const handleSendBaccaratResult = async (resultType) => {
+            const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return;
+                const text = content || inputMessage.trim();
+                if (text === '') return;
+                sfx.confirm();
+                const messagesColRef = collection(db, 'user_chats', currentChat.id, 'messages');
+                await addDoc(messagesColRef, {
+                    type: type,
+                    text: type === 'text' ? text : null,
+                    content: type !== 'text' ? content : null,
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+                await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: true });
+                if (type === 'text') setInputMessage('');
+            };
 
+            const handleSendBaccaratResult = (resultType) => {
                 let content;
                 switch(resultType) {
                     case 'P': content = { result: 'P', color: 'blue-400' }; break;
@@ -511,682 +680,182 @@
                     case 'H': content = { result: 'H', color: 'green-400' }; break;
                     default: return;
                 }
-
-                soundService.playSend();
-                await db.collection(`user_chats/${currentChat.id}/messages`).add({
-                    type: 'baccarat_result',
-                    content: content,
-                    senderId: currentUser.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                await db.collection('user_chats').doc(currentChat.id).update({
-                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
-                    isRead: true
-                });
+                handleSendMessage('baccarat_result', content);
             };
 
-            const handleSendMessage = async () => {
-                const trimmedMessage = inputMessage.trim();
-                if (trimmedMessage === '' || !currentChat) return;
-
-                let messageData;
-                if (trimmedMessage.startsWith('/load ')) {
-                    const text = trimmedMessage.substring(6);
-                    messageData = { type: 'loading_message', text: text };
-                } else {
-                    messageData = { type: 'text', text: trimmedMessage };
-                }
-                
-                await db.collection(`user_chats/${currentChat.id}/messages`).add({
-                    ...messageData,
-                    senderId: currentUser.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                await db.collection('user_chats').doc(currentChat.id).update({
-                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                setInputMessage('');
-                soundService.playSend();
-            };
-
-            const handleSendTableMessage = async () => {
-                if (tableAnnounceInput.trim() === '' || !currentChat) return;
-                soundService.playAlert();
-                await db.collection(`user_chats/${currentChat.id}/messages`).add({
-                    type: 'table_announcement',
-                    text: tableAnnounceInput.trim(),
-                    senderId: currentUser.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                });
-                 await db.collection('user_chats').doc(currentChat.id).update({
-                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-                });
+            const handleSendTableMessage = () => {
+                if(tableAnnounceInput.trim() === '') return;
+                handleSendMessage('table_announcement', { text: tableAnnounceInput.trim() });
                 setTableAnnounceInput('');
             };
 
-            const handleDeleteMessage = async (messageId) => {
-                if (!currentChat) return;
-                try {
-                    await db.collection(`user_chats/${currentChat.id}/messages`).doc(messageId).delete();
-                    soundService.playClick();
-                } catch (error) {
-                    console.error("Error deleting message:", error);
-                    soundService.playError();
-                    showNotification("Lỗi: Không thể xóa tin nhắn.");
-                }
-            };
-
-            const handleUpdateMessage = async () => {
-                if (!editingMessage || !currentChat) return;
-                const newText = editingMessage.text.trim();
-                if (newText === '') {
-                    handleDeleteMessage(editingMessage.id);
-                    setEditingMessage(null);
-                    return;
-                }
-
-                try {
-                    await db.collection(`user_chats/${currentChat.id}/messages`).doc(editingMessage.id).update({
-                        text: newText,
-                        edited: true
-                    });
-                    setEditingMessage(null);
-                    soundService.playSend();
-                } catch (error) {
-                    console.error("Error updating message:", error);
-                    soundService.playError();
-                    showNotification("Lỗi: Không thể cập nhật tin nhắn.");
-                }
-            };
-
-            // MODIFIED: Function to disconnect a user with better feedback
-            const handleDisconnectUser = async (userId, username) => {
-                if (!userId) return;
-                try {
-                    const userStatusRef = rtdb.ref('/status/' + userId);
-                    await userStatusRef.set({
-                        isOnline: false,
-                        lastSeen: firebase.database.ServerValue.TIMESTAMP
-                    });
-                    showNotification(`Đã ngắt kết nối người dùng ${username}.`);
-                } catch (error) {
-                    console.error("Error disconnecting user:", error);
-                    showNotification(`Lỗi: Không thể ngắt kết nối ${username}.`);
-                }
-                setActiveMenu(null);
-            };
-
-            const handleDeleteHistory = (userId, username) => {
-                setActionToConfirm({
-                    action: () => executeDeleteHistory(userId, username),
-                    message: `Bạn có chắc chắn muốn xóa toàn bộ lịch sử chat của ${username}? Hành động này không thể hoàn tác.`
-                });
-                setShowConfirmModal(true);
-                setActiveMenu(null);
-            };
-
-            // MODIFIED: Function executes deletion without sending a system message
-            const executeDeleteHistory = async (userId, username) => {
-                if (!userId) return;
-                const messagesRef = db.collection('user_chats').doc(userId).collection('messages');
-                try {
-                    const snapshot = await messagesRef.get();
-                    if (snapshot.empty) {
-                        showNotification("Không có tin nhắn nào để xóa.");
-                        return;
-                    }
-                    const batch = db.batch();
-                    snapshot.docs.forEach(doc => {
+            const handleDeleteHistory = async (userId) => {
+                if (window.confirm("Bạn có chắc muốn xóa toàn bộ lịch sử chat này?")) {
+                    sfx.error();
+                    const messagesColRef = collection(db, 'user_chats', userId, 'messages');
+                    const messagesSnapshot = await getDocs(messagesColRef);
+                    const batch = writeBatch(db);
+                    messagesSnapshot.forEach(doc => {
                         batch.delete(doc.ref);
                     });
                     await batch.commit();
-
-                    showNotification(`Đã xóa thành công lịch sử chat của ${username}.`);
-                    
-                    // If the deleted chat is the current one, refresh the messages
-                    if(currentChat && currentChat.id === userId) {
+                    if (currentChat?.id === userId) {
                         setMessages([]);
                     }
-
-                } catch (error) {
-                    console.error("Error deleting chat history:", error);
-                    showNotification("Lỗi: Không thể xóa lịch sử chat.");
                 }
             };
-            
-            const AsciiChart = ({ value, total }) => {
-                const percentage = total > 0 ? (value / total) * 100 : 0;
-                const filledChars = Math.round((percentage / 100) * 20);
-                const emptyChars = 20 - filledChars;
-                const bar = `[${'█'.repeat(filledChars)}${'░'.repeat(emptyChars)}]`;
-                return <pre className="text-sm">{bar} {value}/{total} ONLINE</pre>;
-            };
 
-            const ConfirmationModal = () => {
-                if (!showConfirmModal || !actionToConfirm) return null;
-                return (
-                    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-                        <div className="p-6 retro-container w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                            <h3 className="text-xl sm:text-2xl glitch-text mb-4 text-yellow-400">YÊU CẦU XÁC NHẬN</h3>
-                            <p className="mb-6">{actionToConfirm.message}</p>
-                            <div className="flex justify-end space-x-4 mt-4">
-                                <button onClick={() => setShowConfirmModal(false)} className="retro-button">HỦY</button>
-                                <button onClick={() => {
-                                    actionToConfirm.action();
-                                    setShowConfirmModal(false);
-                                }} className="retro-button border-red-500 text-red-500 hover:bg-red-500 hover:text-black">XÁC NHẬN</button>
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
+             const MessageBubble = ({ children, isUser }) => {
+                const style = {
+                    clipPath: isUser 
+                        ? 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)'
+                        : 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)',
+                    background: isUser
+                        ? 'linear-gradient(135deg, rgba(60, 60, 80, 0.3), rgba(40, 40, 60, 0.2))'
+                        : 'linear-gradient(135deg, rgba(0, 130, 255, 0.2), rgba(0, 196, 255, 0.1))',
+                    border: '1px solid',
+                    borderColor: isUser ? 'rgba(100, 100, 120, 0.3)' : 'rgba(0, 221, 255, 0.3)'
+                };
+                return <div className="p-4" style={style}>{children}</div>
+            }
 
             return (
-                <div className="flex w-full h-screen p-1 sm:p-2 md:p-4">
-                    <aside className={`w-full md:w-1/3 lg:w-1/4 retro-container flex-col ${currentChat ? 'hidden md:flex' : 'flex'}`}>
-                        <header className="retro-header flex justify-between items-center flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl glitch-text">ĐIỀU KHIỂN</h2>
-                            <button onClick={onLogout} className="text-xs retro-button">ĐĂNG XUẤT</button>
-                        </header>
-                         <div className="p-2 border-b border-green-900">
-                            <p className="text-md sm:text-lg">TRẠNG THÁI</p>
-                            <AsciiChart value={onlineCount} total={conversations.length} />
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {conversations.map(conv => (
-                                <div key={conv.id} className="p-3 border-b border-green-900 flex justify-between items-center relative">
-                                    <div onClick={() => loadConversation(conv)} className="flex-1 cursor-pointer min-w-0">
-                                        <p className={`font-semibold text-md sm:text-lg truncate ${currentChat?.id === conv.id ? 'text-cyan-300' : ''}`}>
-                                            > {conv.username || 'Unknown'}
-                                        </p>
-                                    </div>
-                                    {conv.isRead === false && <span className="text-xs font-bold unread-indicator mr-2">[MỚI]</span>}
-                                    <button onClick={() => setActiveMenu(activeMenu === conv.id ? null : conv.id)} className="p-1 flex-shrink-0">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
-                                    </button>
-                                    {activeMenu === conv.id && (
-                                        <div className="absolute right-0 top-12 mt-1 w-48 retro-container z-10 p-1" onMouseLeave={() => setActiveMenu(null)}>
-                                            <button onClick={() => handleDeleteHistory(conv.id, conv.username)} className="w-full text-left p-2 text-sm hover:bg-green-900">Xóa Lịch Sử Chat</button>
-                                            <button onClick={() => handleDisconnectUser(conv.id, conv.username)} className="w-full text-left p-2 text-sm hover:bg-green-900">Ngắt Kết Nối</button>
+                 <div className="h-screen w-screen flex items-center justify-center p-4">
+                    <div className="w-full h-full max-w-7xl hud-frame no-padding flex">
+                        <div className="w-1/3 border-r border-[var(--primary-glow)]/20 flex flex-col">
+                            <header className="p-4 border-b border-[var(--primary-glow)]/20 flex-shrink-0 flex justify-between items-center">
+                                <h2 className="text-xl font-bold text-white">Bảng điều khiển</h2>
+                                <button onClick={onLogout} className="secondary-btn px-3 py-1.5 text-sm">Đăng xuất</button>
+                            </header>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                {conversations.map(conv => (
+                                    <div 
+                                        key={conv.id} 
+                                        onClick={() => setCurrentChat(conv)}
+                                        className={`p-4 cursor-pointer border-b border-white/10 flex justify-between items-center transition-colors duration-200 ${currentChat?.id === conv.id ? 'bg-[var(--primary-glow)]/20' : 'hover:bg-white/10'}`}
+                                    >
+                                        <div>
+                                            <p className="font-semibold text-white text-lg">{conv.username}</p>
+                                            <p className="text-xs text-gray-400">ID: {conv.id.slice(0, 8)}...</p>
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+                                        <div className="flex items-center space-x-3">
+                                            {conv.isRead === false && <div className="w-3 h-3 bg-[var(--primary-glow)] rounded-full shadow-[0_0_10px_var(--primary-glow)]"></div>}
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteHistory(conv.id); }} className="text-gray-400 hover:text-red-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.134H8.09a2.09 2.09 0 0 0-2.09 2.134v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </aside>
-                    <section className={`w-full md:w-2/3 lg:w-3/4 flex-col retro-container ml-0 md:ml-2 ${currentChat ? 'flex' : 'hidden md:flex'}`}>
-                        {currentChat ? (
-                            <React.Fragment>
-                                <header className="retro-header flex items-center">
-                                    <button onClick={() => setCurrentChat(null)} className="md:hidden mr-4 retro-button text-sm p-2">&lt;</button>
-                                    > KÊNH: {currentChat.username}
-                                </header>
-                                <main ref={messagesListRef} className="flex-1 p-2 sm:p-4 overflow-y-auto">
-                                    {messages.map(msg => {
-                                        const isUserMessage = msg.senderId !== currentUser.uid;
-                                        const isEditingThisMessage = editingMessage?.id === msg.id;
-                                        const canBeEdited = msg.type === 'text' || msg.type === 'plea';
 
-                                        return (
-                                            <div key={msg.id} className={`group flex mb-4 items-end ${isUserMessage ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                                                <div className={`max-w-lg p-2 ${isUserMessage ? '' : 'text-cyan-300'}`}>
-                                                    {isEditingThisMessage ? (
-                                                        <div>
-                                                            <textarea
-                                                                value={editingMessage.text}
-                                                                onChange={(e) => setEditingMessage({ ...editingMessage, text: e.target.value })}
-                                                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUpdateMessage(); } }}
-                                                                className="w-full retro-textarea bg-gray-900"
-                                                                rows="3"
-                                                                autoFocus
-                                                            />
-                                                            <div className="text-right mt-1 space-x-2">
-                                                                <button onClick={() => setEditingMessage(null)} className="retro-button text-xs p-1">Hủy</button>
-                                                                <button onClick={handleUpdateMessage} className="retro-button text-xs p-1">Lưu</button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <MessageContent msg={msg} />
-                                                    )}
-                                                </div>
-
-                                                {!isEditingThisMessage && canBeEdited && (
-                                                    <div className={`flex flex-col space-y-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity ${isUserMessage ? '' : 'mr-2'}`}>
-                                                        <button title="Sửa tin nhắn" onClick={() => setEditingMessage({ id: msg.id, text: msg.text })}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-400 hover:text-yellow-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>
-                                                        </button>
-                                                        <button title="Xóa tin nhắn" onClick={() => handleDeleteMessage(msg.id)}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 hover:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                        </button>
+                        <div className="w-2/3 flex flex-col">
+                           {currentChat ? (
+                                <Fragment>
+                                    <header className="p-4 border-b border-[var(--primary-glow)]/20 flex-shrink-0">
+                                        <h2 className="text-xl font-bold text-white">Kênh: {currentChat.username}</h2>
+                                    </header>
+                                    <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                                        {messages.map(msg => {
+                                            const isUser = msg.senderId !== currentUser.uid;
+                                            return (
+                                                <div key={msg.id} className={`flex mb-4 ${!isUser ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className="max-w-lg">
+                                                        <MessageBubble isUser={isUser}>
+                                                             <p className="text-white text-lg">{msg.text || JSON.stringify(msg.content)}</p>
+                                                        </MessageBubble>
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </main>
-                                <footer className="p-2 sm:p-4 border-t border-green-900">
-                                    <div className="flex items-center border border-yellow-500 p-2 mb-2">
-                                        <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} className="flex-1 retro-input text-sm" placeholder="> GỬI BÀN..." />
-                                        <button onClick={handleSendTableMessage} className="ml-2 retro-button border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black text-sm">GỬI BÀN</button>
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-                                        <button onClick={() => handleSendBaccaratResult('P')} className="retro-button text-sm border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-black">NHÀ CON (P)</button>
-                                        <button onClick={() => handleSendBaccaratResult('B')} className="retro-button text-sm border-red-500 text-red-500 hover:bg-red-500 hover:text-black">NHÀ CÁI (B)</button>
-                                        <button onClick={() => handleSendBaccaratResult('H')} className="retro-button text-sm border-green-400 text-green-400 hover:bg-green-400 hover:text-black">HOÀ (H)</button>
-                                        <button onClick={() => {setInputMessage('XIN VUI LÒNG ĐỢI'); handleSendMessage();}} className="retro-button text-sm">XIN VUI LÒNG ĐỢI</button>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSendMessage()} className="flex-1 retro-input" placeholder="> Phản hồi hoặc dùng lệnh /load..." />
-                                        <button onClick={handleSendMessage} className="ml-2 retro-button">GỬI</button>
-                                    </div>
-                                </footer>
-                            </React.Fragment>
-                        ) : (
-                            <div className="flex-1 flex items-center justify-center opacity-50 text-xl">> CHỌN KÊNH LIÊN LẠC</div>
-                        )}
-                    </section>
-                    <ConfirmationModal />
-                    {/* NEW: Notification Display */}
-                    {notification && (
-                        <div className="fixed bottom-4 right-4 p-4 retro-container bg-gray-900 border-yellow-400 z-50 animate-pulse">
-                            <p>> {notification}</p>
+                                                </div>
+                                            );
+                                        })}
+                                        <div ref={messagesEndRef} />
+                                    </main>
+                                    <footer className="p-4 border-t border-[var(--primary-glow)]/20 flex-shrink-0 space-y-3 bg-[rgba(1,4,17,0.8)]">
+                                        <div className="flex items-center space-x-2">
+                                            <input value={tableAnnounceInput} onChange={e => setTableAnnounceInput(e.target.value)} type="text" placeholder="Gửi bàn..." className="w-full form-input text-sm !p-2" />
+                                            <button onClick={handleSendTableMessage} className="secondary-btn px-4 py-2 text-sm whitespace-nowrap">Gửi Bàn</button>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <button onClick={() => handleSendBaccaratResult('P')} className="secondary-btn p-2 text-sm border-blue-400 text-blue-300">Nhà Con (P)</button>
+                                            <button onClick={() => handleSendBaccaratResult('B')} className="secondary-btn p-2 text-sm border-red-400 text-red-300">Nhà Cái (B)</button>
+                                            <button onClick={() => handleSendBaccaratResult('H')} className="secondary-btn p-2 text-sm border-green-400 text-green-300">Hòa (H)</button>
+                                            <button onClick={() => handleSendMessage('text', 'XIN VUI LÒNG ĐỢI')} className="secondary-btn p-2 text-sm">Đợi</button>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
+                                            <button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button>
+                                        </div>
+                                    </footer>
+                                </Fragment>
+                           ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-[var(--primary-glow)]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                    <p className="text-xl">Chọn một kênh liên lạc để bắt đầu</p>
+                                </div>
+                           )}
                         </div>
-                    )}
+                    </div>
                 </div>
             );
         };
 
-        //================================================================================
-        // COMPONENT: UserView
-        //================================================================================
-        const UserView = ({ currentUser, onLogout }) => {
-            const [messages, setMessages] = useState([]);
-            const [inputMessage, setInputMessage] = useState('');
-            const [energy, setEnergy] = useState(7);
-            const [showBlessingModal, setShowBlessingModal] = useState(false);
-            const [plea, setPlea] = useState('');
-            const [showInfoModal, setShowInfoModal] = useState(false);
-            const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
-            const [isAnnouncing, setIsAnnouncing] = useState(false);
-            const messagesListRef = useRef(null);
-
-            const [dailyQuestionsLeft, setDailyQuestionsLeft] = useState(DAILY_QUESTION_LIMIT);
-            const [blessingCooldown, setBlessingCooldown] = useState(0);
-            const QUESTION_ENERGY_COST = 7;
-
-            const formatTime = (ms) => {
-                if (ms <= 0) return "00:00:00";
-                const totalSeconds = Math.floor(ms / 1000);
-                const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-                const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-                const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-                return `${hours}:${minutes}:${seconds}`;
-            };
-
-            useEffect(() => {
-                if (!currentUser) return;
-                
-                const userDocRef = db.collection('users').doc(currentUser.uid);
-                const unsubUser = userDocRef.onSnapshot(doc => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        setEnergy(data.energy !== undefined ? data.energy : 7);
-                        if (data.hasSubmittedInfo !== true) {
-                            setShowInfoModal(true);
-                        }
-
-                        const now = Date.now();
-
-                        // Check and set question limit
-                        const lastQuestionTs = data.lastQuestionTimestamp?.toMillis() || 0;
-                        if (now - lastQuestionTs > COOLDOWN_DURATION) {
-                            setDailyQuestionsLeft(DAILY_QUESTION_LIMIT);
-                        } else {
-                            const questionsUsed = data.dailyQuestionCount || 0;
-                            const questionsLeft = DAILY_QUESTION_LIMIT - questionsUsed;
-                            setDailyQuestionsLeft(questionsLeft > 0 ? questionsLeft : 0);
-                        }
-
-                        // Check and set blessing limit
-                        const lastBlessingTs = data.lastBlessingTimestamp?.toMillis() || 0;
-                        if (now - lastBlessingTs > COOLDOWN_DURATION) {
-                            setBlessingCooldown(0);
-                        } else {
-                            setBlessingCooldown((lastBlessingTs + COOLDOWN_DURATION) - now);
-                        }
-                    }
-                });
-
-                const messagesRef = db.collection('user_chats').doc(currentUser.uid).collection('messages').orderBy('timestamp');
-                const unsubMessages = messagesRef.onSnapshot(snapshot => {
-                    setMessages(prevMessages => {
-                        const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        if (newMessages.length > prevMessages.length) {
-                            const latestMsg = newMessages[newMessages.length - 1];
-                            if (latestMsg.senderId !== currentUser.uid) {
-                                if (latestMsg.type === 'table_announcement' || latestMsg.type === 'baccarat_result' || latestMsg.type === 'loading_message') {
-                                    soundService.playAlert();
-                                    if(latestMsg.type === 'table_announcement') {
-                                      setIsAnnouncing(true);
-                                      setTimeout(() => setIsAnnouncing(false), 2000);
-                                    }
-                                } else {
-                                    soundService.playReceive();
-                                }
-                            }
-                        }
-                        return newMessages;
-                    });
-                }, console.error);
-                
-                return () => { unsubUser(); unsubMessages(); };
-            }, [currentUser]);
-
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    setBlessingCooldown(prev => prev > 0 ? prev - 1000 : 0);
-                }, 1000);
-                return () => clearInterval(timer);
-            }, []);
-
-            useEffect(() => {
-                 if (messagesListRef.current) messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
-            }, [messages]);
-            
-            const handleAskQuestion = async () => {
-                const content = inputMessage.trim();
-                if (content === '') return;
-
-                const userDocRef = db.collection('users').doc(currentUser.uid);
-                const chatDocRef = db.collection('user_chats').doc(currentUser.uid);
-                const messagesPath = `user_chats/${currentUser.uid}/messages`;
-
-                try {
-                    await db.runTransaction(async (transaction) => {
-                        const userDoc = await transaction.get(userDocRef);
-                        if (!userDoc.exists) throw "Tài khoản không tồn tại!";
-                        
-                        const data = userDoc.data();
-                        const now = Date.now();
-                        const lastQuestionTs = data.lastQuestionTimestamp?.toMillis() || 0;
-                        
-                        let currentCount = data.dailyQuestionCount || 0;
-                        let currentEnergy = data.energy || 0;
-
-                        if (now - lastQuestionTs > COOLDOWN_DURATION) {
-                            currentCount = 0;
-                        }
-
-                        const isFree = currentCount < DAILY_QUESTION_LIMIT;
-
-                        if (isFree) {
-                            transaction.update(userDocRef, {
-                                dailyQuestionCount: currentCount + 1,
-                                lastQuestionTimestamp: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                        } else {
-                            if (currentEnergy < QUESTION_ENERGY_COST) {
-                                throw "Đã hết lượt hỏi miễn phí và không đủ năng lượng.";
-                            }
-                            transaction.update(userDocRef, { 
-                                energy: firebase.firestore.FieldValue.increment(-QUESTION_ENERGY_COST) 
-                            });
-                        }
-                        
-                        const messageData = { type: 'text', text: content, senderId: currentUser.uid, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
-                        const newMessageRef = db.collection(messagesPath).doc();
-                        transaction.set(newMessageRef, messageData);
-                        
-                        const username = currentUser.email.split('@')[0];
-                        transaction.set(chatDocRef, {
-                            lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
-                            username: username,
-                            userId: currentUser.uid,
-                            isRead: false 
-                        }, { merge: true });
-                    });
-                    soundService.playSend();
-                    setInputMessage('');
-                } catch (error) {
-                    console.error("Transaction failed: ", error);
-                    alert(typeof error === 'string' ? error : "Lỗi: Không thể gửi tin nhắn.");
-                    soundService.playError();
-                }
-            };
-            
-            const handleBlessingRequest = async () => {
-                if (plea.trim() === '') return;
-                if (blessingCooldown > 0) {
-                    alert("Bạn đã nhận ban phước rồi. Vui lòng quay lại sau.");
-                    return;
-                }
-                
-                setShowBlessingModal(false);
-                
-                await db.collection(`user_chats/${currentUser.uid}/messages`).add({
-                    type: 'plea',
-                    text: plea.trim(),
-                    senderId: currentUser.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                const blessing = {
-                    table: BACARAT_TABLES[Math.floor(Math.random() * BACARAT_TABLES.length)],
-                    side: Math.random() < 0.5 ? 'NHÀ CON' : 'NHÀ CÁI',
-                    hand: Math.floor(Math.random() * (30 - 15 + 1)) + 15
-                };
-                
-                setTimeout(async () => {
-                    const blessingMessage = {
-                        type: 'blessing',
-                        content: blessing,
-                        senderId: 'AQUARIUS_SYSTEM',
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    await db.collection(`user_chats/${currentUser.uid}/messages`).add(blessingMessage);
-                    await db.collection('users').doc(currentUser.uid).set({
-                        lastBlessingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                     await db.collection('user_chats').doc(currentUser.uid).update({
-                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp(),
-                        isRead: false
-                    });
-                }, 1500);
-
-                setPlea('');
-            };
-            
-            const handleInfoSubmit = async () => {
-                const { f168Account, capital, target } = infoFormData;
-                if (!f168Account || !capital || !target) {
-                    alert("VUI LÒNG NHẬP ĐẦY ĐỦ THÔNG TIN");
-                    return;
-                }
-                const infoContent = { f168Account, capital, target };
-                await db.collection(`user_chats/${currentUser.uid}/messages`).add({
-                    type: 'info_submission',
-                    content: infoContent,
-                    senderId: currentUser.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                await db.collection('users').doc(currentUser.uid).set({ hasSubmittedInfo: true }, { merge: true });
-                setShowInfoModal(false);
-            };
-
-            const EnergyBar = ({ value }) => {
-                const percentage = Math.max(0, Math.min(100, (value / 7) * 100));
-                const barColor = percentage > 50 ? 'bg-green-500' : percentage > 20 ? 'bg-yellow-500' : 'bg-red-500';
-                const barWidth = `${percentage}%`;
-                return (
-                    <div className="w-full border border-green-700 p-1">
-                        <div className="flex items-center">
-                            <div className="text-xs sm:text-sm mr-2">N.LƯỢNG:</div>
-                            <div className="flex-1 h-4 bg-gray-800">
-                                <div className={`h-full ${barColor}`} style={{width: barWidth}}></div>
-                            </div>
-                            <div className="text-sm ml-2">{value}</div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const username = currentUser.email.split('@')[0];
-            const canAsk = dailyQuestionsLeft > 0 || energy >= QUESTION_ENERGY_COST;
-
-            return (
-                 <div className={`h-screen p-1 sm:p-2 md:p-4 ${isAnnouncing ? 'yellow-alert-flash' : ''}`}>
-                    <div className="w-full h-full flex flex-col retro-container crt-effect">
-                        <header className="retro-header flex justify-between items-center">
-                            <h2 className="text-lg sm:text-xl glitch-text">AQUARIUS TERMINAL</h2>
-                            <button onClick={() => { soundService.playClick(); onLogout(); }} className="text-xs retro-button p-2">NGẮT KẾT NỐI</button>
-                        </header>
-                        <div className="p-2 border-b border-green-900">
-                            <p className="truncate">> PILOT: {username}</p>
-                            <EnergyBar value={energy} />
-                        </div>
-                        <main ref={messagesListRef} className="flex-1 p-2 sm:p-4 overflow-y-auto">
-                            {messages.map((msg) => (
-                                <div key={msg.id} className="mb-2">
-                                    <div className={msg.senderId === currentUser.uid ? 'text-cyan-300' : ''}>
-                                        {msg.type === 'system' ? '' : <span className="mr-2">{msg.senderId === currentUser.uid ? `<${username}>` : '<AQUARIUS>'}</span>}
-                                        <MessageContent msg={msg} />
-                                    </div>
-                                </div>
-                            ))}
-                        </main>
-                        <div className="p-2 border-t border-b border-green-900 grid grid-cols-2 gap-2 text-center">
-                             <div>
-                                <p className="opacity-70 text-sm">HỎI AQUARIUS</p>
-                                {dailyQuestionsLeft > 0 ? (
-                                    <p className="text-lg">{dailyQuestionsLeft} / {DAILY_QUESTION_LIMIT} LƯỢT MIỄN PHÍ</p>
-                                ) : (
-                                    <p className="text-lg text-yellow-400">Tốn {QUESTION_ENERGY_COST} N.LƯỢNG</p>
-                                )}
-                            </div>
-                             <div>
-                                <p className="opacity-70 text-sm">BAN PHƯỚC</p>
-                                {blessingCooldown > 0 ? (
-                                    <p className="text-lg text-yellow-400">{formatTime(blessingCooldown)}</p>
-                                ) : (
-                                     <button onClick={() => {soundService.playClick(); setShowBlessingModal(true);}} className="retro-button text-xs sm:text-sm p-2 mt-1">YÊU CẦU</button>
-                                )}
-                            </div>
-                        </div>
-                        <footer className="p-2 border-t border-green-900">
-                            <div className="flex w-full items-center">
-                                <span className="mr-2 text-lg">></span>
-                                <input className="flex-1 retro-input" placeholder="Nhập câu hỏi..." value={inputMessage} onChange={(e) => {setInputMessage(e.target.value); soundService.playTyping();}} onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAskQuestion())} disabled={!canAsk} />
-                                <button onClick={handleAskQuestion} disabled={!canAsk} className="ml-2 retro-button p-2">GỬI</button>
-                            </div>
-                        </footer>
-                    </div>
-                    {showBlessingModal && (
-                        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-                            <div className="p-6 retro-container w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                                <h3 className="text-xl sm:text-2xl glitch-text mb-4">TRUYỀN TẢI THỈNH CẦU</h3>
-                                <textarea value={plea} onChange={e => setPlea(e.target.value)} className="w-full h-24 retro-textarea" placeholder="> Viết lời thỉnh cầu của bạn tại đây..."></textarea>
-                                <div className="flex justify-end space-x-4 mt-4">
-                                    <button onClick={() => {soundService.playClick(); setShowBlessingModal(false);}} className="retro-button">HỦY</button>
-                                    <button onClick={() => {soundService.playClick(); handleBlessingRequest();}} className="retro-button">GỬI</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {showInfoModal && (
-                        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-                            <div className="p-6 retro-container w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                                <h3 className="text-xl sm:text-2xl glitch-text mb-4">YÊU CẦU KHAI BÁO</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-md sm:text-lg">> TÊN TK F168:</label>
-                                        <input value={infoFormData.f168Account} onChange={e => setInfoFormData({...infoFormData, f168Account: e.target.value})} type="text" className="w-full mt-1 retro-input" />
-                                    </div>
-                                    <div>
-                                        <label className="text-md sm:text-lg">> SỐ VỐN:</label>
-                                        <input value={infoFormData.capital} onChange={e => setInfoFormData({...infoFormData, capital: e.target.value})} type="text" className="w-full mt-1 retro-input" />
-                                    </div>
-                                     <div>
-                                        <label className="text-md sm:text-lg">> MUỐN LÊN BAO NHIÊU:</label>
-                                        <input value={infoFormData.target} onChange={e => setInfoFormData({...infoFormData, target: e.target.value})} type="text" className="w-full mt-1 retro-input" />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end mt-6">
-                                    <button onClick={() => {soundService.playClick(); handleInfoSubmit();}} className="retro-button">GỬI BÁO CÁO</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                 </div>
-            );
-        };
-        
         //================================================================================
         // TOP-LEVEL COMPONENT: System
         //================================================================================
         const System = () => {
             const [currentUser, setCurrentUser] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
-            const [isAdmin, setIsAdmin] = useState(false);
 
             useEffect(() => {
-                const startAudio = () => {
-                    soundService.init();
-                    soundService.startAmbient();
-                    document.removeEventListener('click', startAudio);
-                    document.removeEventListener('keydown', startAudio);
-                };
-                document.addEventListener('click', startAudio);
-                document.addEventListener('keydown', startAudio);
-
-                const unsubscribeAuth = auth.onAuthStateChanged(user => {
+                const unsubscribe = onAuthStateChanged(auth, (user) => {
                     setCurrentUser(user);
-                    setIsAdmin(user ? user.email.split('@')[0] === ADMIN_USERNAME : false);
                     setIsLoading(false);
                     if (user) {
-                        const userStatusRef = rtdb.ref('/status/' + user.uid);
-                        const isOnline = { isOnline: true, lastSeen: firebase.database.ServerValue.TIMESTAMP };
-                        const isOffline = { isOnline: false, lastSeen: firebase.database.ServerValue.TIMESTAMP };
-                        rtdb.ref('.info/connected').on('value', snapshot => {
+                        const userStatusRef = ref(rtdb, '/status/' + user.uid);
+                        const isOnline = { isOnline: true, lastSeen: rtdbServerTimestamp() };
+                        const isOffline = { isOnline: false, lastSeen: rtdbServerTimestamp() };
+                        onValue(ref(rtdb, '.info/connected'), (snapshot) => {
                             if (snapshot.val() === false) return;
-                            userStatusRef.onDisconnect().set(isOffline).then(() => userStatusRef.set(isOnline));
+                            onDisconnect(userStatusRef).set(isOffline).then(() => set(userStatusRef, isOnline));
                         });
                     }
                 });
-
-                return () => {
-                    unsubscribeAuth();
-                    document.removeEventListener('click', startAudio);
-                    document.removeEventListener('keydown', startAudio);
-                };
+                return () => unsubscribe();
             }, []);
 
             const handleLogout = () => {
+                sfx.logout();
                 if (auth.currentUser) {
-                    rtdb.ref('/status/' + auth.currentUser.uid).set({
-                        isOnline: false,
-                        lastSeen: firebase.database.ServerValue.TIMESTAMP
-                    });
+                    const userStatusRef = ref(rtdb, '/status/' + auth.currentUser.uid);
+                    set(userStatusRef, { isOnline: false, lastSeen: rtdbServerTimestamp() });
                 }
-                auth.signOut();
+                signOut(auth);
             };
-            
+
+            if (isLoading) {
+                return null; // Show nothing while checking auth state
+            }
+
+            const isAdmin = currentUser && currentUser.email.split('@')[0] === ADMIN_USERNAME;
+
             return (
-                <div>
-                    <Starfield />
-                    {isLoading ? (
-                        <div className="min-h-screen bg-black flex items-center justify-center text-2xl animate-pulse"><p>ĐANG KHỞI ĐỘNG HỆ THỐNG...<span className="typing-cursor"></span></p></div>
-                    ) : !currentUser ? (
+                <Fragment>
+                    <AnimatedPresence isVisible={!currentUser}>
                         <LoginScreen />
-                    ) : isAdmin ? (
-                        <AdminDashboard currentUser={currentUser} onLogout={handleLogout} />
-                    ) : (
-                        <UserView currentUser={currentUser} onLogout={handleLogout} />
-                    )}
-                </div>
+                    </AnimatedPresence>
+                    <AnimatedPresence isVisible={!!currentUser}>
+                        <div> 
+                            {isAdmin ? 
+                                <AdminDashboard currentUser={currentUser} onLogout={handleLogout} /> :
+                                <UserView currentUser={currentUser} onLogout={handleLogout} />
+                            }
+                        </div>
+                    </AnimatedPresence>
+                </Fragment>
             );
         };
 
-        ReactDOM.render(<System />, document.getElementById('root'));
+        ReactDOM.createRoot(document.getElementById('root')).render(<System />);
     </script>
 </body>
 </html>
