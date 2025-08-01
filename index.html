@@ -797,7 +797,7 @@
                 }
 
                 return (
-                    <div className={`flex mb-4 ${isUser ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`flex mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
                         <div className="max-w-lg">
                             <MessageBubble isUser={isUser}>{renderContent()}</MessageBubble>
                         </div>
@@ -1058,7 +1058,7 @@
                 const isEditable = msg.type === 'text' || (!msg.type && msg.text);
 
                 return (
-                     <div className={`group flex items-end gap-2 my-2 ${!isUserMessage ? 'justify-end' : 'justify-start'}`}>
+                     <div className={`group flex items-end gap-2 my-2 ${!isUserMessage ? 'justify-start' : 'justify-end'}`}>
                         {/* For Admin messages, show buttons on the left */}
                         {!isUserMessage && isEditable && (
                             <div className="hidden group-hover:flex items-center">
