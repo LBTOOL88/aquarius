@@ -301,7 +301,7 @@
     <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         
         const { useState, useEffect, useRef, Fragment } = React;
@@ -456,8 +456,16 @@
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const userDocRef = doc(db, "users", userCredential.user.uid);
                     await setDoc(userDocRef, {
-                        uid: userCredential.user.uid, username: processedUsername, createdAt: serverTimestamp(),
-                        energy: 7, hasSubmittedInfo: false, lastBlessingTimestamp: null, lastLoanRequestTimestamp: null
+                        uid: userCredential.user.uid, 
+                        username: processedUsername, 
+                        createdAt: serverTimestamp(),
+                        energy: 7, 
+                        hasSubmittedInfo: false, 
+                        lastBlessingTimestamp: null, 
+                        lastLoanRequestTimestamp: null,
+                        // Add new fields for message sending logic
+                        messageCountToday: 0,
+                        lastMessageDate: ""
                     });
                     sfx.confirm();
                 } catch (err) {
@@ -511,6 +519,7 @@
             const [isAdminTyping, setIsAdminTyping] = useState(false);
             const [blessingCooldown, setBlessingCooldown] = useState("");
             const [loanCooldown, setLoanCooldown] = useState("");
+            const [isSending, setIsSending] = useState(false);
             const messagesEndRef = useRef(null);
 
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isAdminTyping]);
@@ -552,6 +561,20 @@
 
             useCooldownTimer(userData?.lastBlessingTimestamp, setBlessingCooldown);
             useCooldownTimer(userData?.lastLoanRequestTimestamp, setLoanCooldown);
+
+            // Effect to reset daily message count
+            useEffect(() => {
+                if (!currentUser || !userData) return;
+
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (userData.lastMessageDate !== todayStr) {
+                    const userDocRef = doc(db, 'users', currentUser.uid);
+                    updateDoc(userDocRef, {
+                        messageCountToday: 0,
+                        lastMessageDate: todayStr
+                    });
+                }
+            }, [currentUser, userData]);
 
             useEffect(() => {
                 if (!currentUser) return;
@@ -595,13 +618,54 @@
 
             const handleSendMessage = async () => {
                 const content = inputMessage.trim();
-                if (content === '') return;
+                if (content === '' || isSending || !userData) return;
+
+                setIsSending(true);
+
+                const userDocRef = doc(db, 'users', currentUser.uid);
+                const messageCount = userData.messageCountToday || 0;
+                const isFree = messageCount < 2;
+                const canAfford = userData.energy >= 7;
+
+                if (!isFree && !canAfford) {
+                    sfx.error();
+                    const messagesColRef = collection(db, 'user_chats', currentUser.uid, 'messages');
+                    await addDoc(messagesColRef, { 
+                        type: 'warning', 
+                        content: { text: 'Không đủ năng lượng để gửi tin nhắn.' },
+                        senderId: 'AQUARIUS_SYSTEM', 
+                        timestamp: serverTimestamp() 
+                    });
+                    setIsSending(false);
+                    return;
+                }
+                
                 sfx.confirm();
-                const username = currentUser.email.split('@')[0];
-                const messagesColRef = collection(db, 'user_chats', currentUser.uid, 'messages');
-                await addDoc(messagesColRef, { type: 'text', text: content, senderId: currentUser.uid, timestamp: serverTimestamp() });
-                await setDoc(doc(db, 'user_chats', currentUser.uid), { lastUpdate: serverTimestamp(), username: username, userId: currentUser.uid, isRead: false }, { merge: true });
-                setInputMessage('');
+                
+                try {
+                    // Send the message first
+                    const username = currentUser.email.split('@')[0];
+                    const messagesColRef = collection(db, 'user_chats', currentUser.uid, 'messages');
+                    await addDoc(messagesColRef, { type: 'text', text: content, senderId: currentUser.uid, timestamp: serverTimestamp() });
+                    await setDoc(doc(db, 'user_chats', currentUser.uid), { lastUpdate: serverTimestamp(), username: username, userId: currentUser.uid, isRead: false }, { merge: true });
+                    
+                    // Then, update user's energy and message count
+                    const updates = {
+                        messageCountToday: increment(1),
+                    };
+                    if (!isFree) {
+                        updates.energy = increment(-7);
+                    }
+                    await updateDoc(userDocRef, updates);
+
+                    setInputMessage('');
+
+                } catch (error) {
+                    console.error("Error sending message:", error);
+                    sfx.error();
+                } finally {
+                    setIsSending(false);
+                }
             };
             
             const handleBlessingRequest = async () => {
@@ -646,13 +710,13 @@
             const MessageBubble = ({ children, isUser, className }) => {
                 const style = {
                     clipPath: isUser 
-                        ? 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)' 
-                        : 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)',
+                        ? 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)' 
+                        : 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)',
                     background: isUser
-                        ? 'linear-gradient(135deg, rgba(0, 130, 255, 0.2), rgba(0, 196, 255, 0.1))'
-                        : 'linear-gradient(135deg, rgba(60, 60, 80, 0.3), rgba(40, 40, 60, 0.2))',
+                        ? 'linear-gradient(135deg, rgba(60, 60, 80, 0.3), rgba(40, 40, 60, 0.2))'
+                        : 'linear-gradient(135deg, rgba(0, 130, 255, 0.2), rgba(0, 196, 255, 0.1))',
                     border: '1px solid',
-                    borderColor: isUser ? 'rgba(0, 221, 255, 0.3)' : 'rgba(100, 100, 120, 0.3)'
+                    borderColor: isUser ? 'rgba(100, 100, 120, 0.3)' : 'rgba(0, 221, 255, 0.3)'
                 };
                 return <div className={`p-4 ${className}`} style={style}>{children}</div>
             }
@@ -733,7 +797,7 @@
                 }
 
                 return (
-                    <div className={`flex mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex mb-4 ${isUser ? 'justify-start' : 'justify-end'}`}>
                         <div className="max-w-lg">
                             <MessageBubble isUser={isUser}>{renderContent()}</MessageBubble>
                         </div>
@@ -741,6 +805,7 @@
                 );
             };
 
+            const sendDisabled = isSending || ((userData?.messageCountToday || 0) >= 2 && userData.energy < 7);
 
             return (
                 <Fragment>
@@ -764,13 +829,21 @@
                                <div ref={messagesEndRef} />
                             </main>
 
-                            <footer className="p-4 flex-shrink-0">
+                            <footer className="p-4 flex-shrink-0 space-y-2">
                                 <div className="flex items-center space-x-4">
                                     <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn px-4 disabled:filter-none disabled:opacity-50" style={{'--primary-glow': 'var(--secondary-glow)'}}>
                                         {blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}
                                     </button>
-                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input" />
-                                    <button onClick={handleSendMessage} className="primary-btn px-6">Gửi</button>
+                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input" />
+                                    <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-6">
+                                        {isSending ? '...' : 'Gửi'}
+                                    </button>
+                                </div>
+                                <div className="text-center text-xs font-tech-mono text-cyan-400 h-4">
+                                    { (userData?.messageCountToday || 0) < 2
+                                        ? `Lượt gửi miễn phí còn lại: ${2 - (userData?.messageCountToday || 0)}`
+                                        : `Mỗi lần gửi tốn 7 năng lượng`
+                                    }
                                 </div>
                             </footer>
                         </div>
@@ -778,7 +851,8 @@
                     
                     <AnimatedPresence isVisible={showBlessingModal}>
                         <Modal onClose={() => setShowBlessingModal(false)}>
-                            <h3 className="text-2xl font-bold text-center mb-4 text-white">Truyền Tải Thỉnh Cầu</h3>
+                            <h3 className="text-2xl font-bold text-center mb-4 text-white">Truyền Tải Thỉnh Cầu Ban Phước</h3>
+                             <p className="text-center text-sm text-gray-400 mb-4">Chức năng này được dùng 1 lần mỗi 24 giờ và không tốn năng lượng.</p>
                             <textarea value={plea} onChange={e => setPlea(e.target.value)} className="w-full h-24 p-3 form-input bg-[rgba(0,0,0,0.3)]" placeholder="Viết lời thỉnh cầu của bạn..."></textarea>
                             <div className="flex justify-end space-x-4 mt-4">
                                 <button onClick={() => setShowBlessingModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
@@ -931,15 +1005,6 @@
             const handleSendWaitMessage = () => {
                 handleSendMessage('wait_message', { text: 'XIN VUI LÒNG ĐỢI' });
             };
-
-            const handleDeleteUserMessage = async (msgId) => {
-                if (!currentChat || !msgId) return;
-                if (window.confirm("Bạn có chắc muốn xóa tin nhắn này của người dùng?")) {
-                    sfx.error();
-                    const msgRef = doc(db, 'user_chats', currentChat.id, 'messages', msgId);
-                    await deleteDoc(msgRef);
-                }
-            };
             
             const handleStartEdit = (msg) => {
                 setEditingMessage({ id: msg.id, text: msg.text });
@@ -989,15 +1054,21 @@
                 if (isSpecialMessage) {
                     return <div className="flex justify-center my-4">{renderContent()}</div>;
                 }
+                
+                const isEditable = msg.type === 'text' || (!msg.type && msg.text);
 
                 return (
                      <div className={`group flex items-end gap-2 my-2 ${!isUserMessage ? 'justify-end' : 'justify-start'}`}>
-                        {isUserMessage && (
-                            <div className="hidden group-hover:flex items-center gap-2">
-                                <button onClick={() => handleStartEdit(msg)} className="text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg></button>
-                                <button onClick={() => handleDeleteUserMessage(msg.id)} className="text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        {/* For Admin messages, show buttons on the left */}
+                        {!isUserMessage && isEditable && (
+                            <div className="hidden group-hover:flex items-center">
+                                <button onClick={() => handleStartEdit(msg)} className="text-gray-400 hover:text-white">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg>
+                                </button>
                             </div>
                         )}
+
+                        {/* The message bubble */}
                         <div className="max-w-lg">
                              <div className="p-4" style={{
                                 clipPath: !isUserMessage ? 'polygon(0% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 85%)' : 'polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%)',
@@ -1008,6 +1079,16 @@
                                 {renderContent()}
                             </div>
                         </div>
+
+                        {/* For User messages, show buttons on the right */}
+                        {isUserMessage && isEditable && (
+                            <div className="hidden group-hover:flex items-center">
+                                <button onClick={() => handleStartEdit(msg)} className="text-gray-400 hover:text-white">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg>
+                                </button>
+                                {/* DELETE BUTTON REMOVED */}
+                            </div>
+                        )}
                     </div>
                 );
             };
