@@ -121,17 +121,15 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--primary-color); border-radius: 10px; }
         
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
-        .fade-out { animation: fadeOut 0.5s ease-out forwards; }
         
         .pulse-announcement {
             animation: pulse-border 2s infinite;
         }
         @keyframes pulse-border {
             0% { box-shadow: 0 0 0 0px var(--glow-color, rgba(245, 158, 11, 0.5)); }
-            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0)); }
-            100% { box-shadow: 0 0 0 0px rgba(245, 158, 11, 0)); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0px rgba(245, 158, 11, 0); }
         }
         
         @keyframes blink-warning {
@@ -144,53 +142,15 @@
             animation: blink-warning 1.5s step-end infinite;
         }
 
-        /* Intro Screen Styles */
-        .intro-screen {
-            background-color: var(--bg-color);
-        }
-        .intro-logo-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-        }
-        .intro-logo {
-            width: 150px;
-            height: 150px;
-        }
-        .intro-logo .logo-path {
-            stroke: var(--primary-color);
-            stroke-width: 8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            fill: none;
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
-            animation: draw-logo 2s ease-in-out forwards;
-        }
-        @keyframes draw-logo {
-            to {
-                stroke-dashoffset: 0;
+        /* NEW: Emergency message styles */
+        @keyframes blink-danger-icon {
+            50% {
+                background-color: var(--danger-color);
+                color: white;
             }
         }
-        .intro-text {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 2rem;
-            color: var(--primary-color);
-            letter-spacing: 0.2em;
-            opacity: 0;
-            animation: fadeInText 1.5s ease-in-out 0.5s forwards;
-            text-shadow: 0 0 10px rgba(37, 99, 235, 0.2);
-        }
-        @keyframes fadeInText {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .flashing-danger-icon {
+            animation: blink-danger-icon 1s step-end infinite;
         }
     </style>
 </head>
@@ -265,7 +225,7 @@
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getDatabase, ref, onValue, set, update, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, uploadBytesResumable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         
         const { useState, useEffect, useRef, Fragment } = React;
 
@@ -300,8 +260,6 @@
             notification: () => new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } }).toDestination().triggerAttackRelease("G5", "16n", Tone.now() + 0.1).triggerAttackRelease("C6", "16n", Tone.now() + 0.2),
             blessing: () => new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.2, decay: 0.3, sustain: 0.5, release: 0.5 } }).toDestination().triggerAttackRelease("A4", "2n"),
             reaction: () => new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination().triggerAttackRelease("A5", "16n"),
-            bootSequence: new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.1 } }).toDestination(),
-            bootComplete: () => new Tone.Synth({ oscillator: { type: "fatsawtooth" }, envelope: { attack: 0.1, decay: 0.5, sustain: 0.2, release: 0.5 } }).toDestination().triggerAttackRelease("C4", "2n"),
         };
 
         const AnimatedPresence = ({ isVisible, children }) => {
@@ -387,14 +345,25 @@
                         );
                     case 'broadcast':
                         return (
-                            <div className="p-4 border-2 border-[var(--success-color)] bg-green-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--success-color)'}}>
+                            <div className="p-4 border-2 border-[var(--success-color)] bg-green-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'rgba(22, 163, 74, 0.5)'}}>
                                 <h4 className="text-xl font-bold text-[var(--success-color)] uppercase tracking-widest">THÔNG BÁO HỆ THỐNG</h4>
+                                <p className="text-xl font-semibold text-slate-800">{msg.content?.text}</p>
+                            </div>
+                        );
+                    // NEW: Emergency message rendering
+                    case 'emergency':
+                        return (
+                            <div className="p-4 border-2 border-[var(--danger-color)] bg-red-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'rgba(220, 38, 38, 0.7)'}}>
+                                <div className="flex justify-center items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--danger-color)] flashing-danger-icon rounded-full p-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    <h4 className="text-xl font-bold text-[var(--danger-color)] uppercase tracking-widest">TIN NHẮN KHẨN CẤP</h4>
+                                </div>
                                 <p className="text-xl font-semibold text-slate-800">{msg.content?.text}</p>
                             </div>
                         );
                     case 'table_announcement':
                         return (
-                            <div className="p-4 border-2 border-[var(--primary-color)] bg-blue-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--primary-color)'}}>
+                            <div className="p-4 border-2 border-[var(--primary-color)] bg-blue-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'rgba(37, 99, 235, 0.5)'}}>
                                 <h4 className="text-xl font-bold text-[var(--primary-color)] uppercase tracking-widest">XÁC NHẬN BÀN</h4>
                                 <p className="text-2xl font-bold text-slate-800 font-orbitron">{msg.content?.table}</p>
                             </div>
@@ -428,7 +397,8 @@
                 }
             };
 
-            if (isSystemMessage || ['broadcast', 'blessing', 'warning', 'info_submission', 'table_announcement'].includes(msg.type)) {
+            // NEW: Added 'emergency' to the list of full-width system messages
+            if (isSystemMessage || ['broadcast', 'blessing', 'warning', 'info_submission', 'table_announcement', 'emergency'].includes(msg.type)) {
                 return <div className="flex justify-center my-4 w-full">{renderContent()}</div>;
             }
             
@@ -604,7 +574,12 @@
                         if (change.type === 'added') {
                             const newMessage = change.doc.data();
                             if (newMessage.senderId !== currentUser.uid) {
+                                // Play sound for any new message
                                 sfx.notification();
+                                // Special sound and visual for emergency
+                                if (newMessage.type === 'emergency') {
+                                    sfx.error(); // Use a more alarming sound
+                                }
                                 if (document.hidden && Notification.permission === "granted") {
                                     new Notification("Tin nhắn mới từ Aquarius", {
                                         body: newMessage.text || "Bạn có một tin nhắn mới.",
@@ -740,11 +715,11 @@
                 return (
                        <div className="w-full">
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-[var(--primary-color)]">NĂNG LƯỢNG</span>
-                                <span className="text-sm font-bold text-slate-600">{current} / {max}</span>
+                                <span className="text-xs font-bold text-[var(--primary-color)]">NĂNG LƯỢNG</span>
+                                <span className="text-xs font-bold text-slate-600">{current}/{max}</span>
                             </div>
-                            <div className="w-full bg-slate-200 rounded-full h-2.5">
-                                <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                                <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-2 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
                             </div>
                         </div>
                 );
@@ -776,34 +751,41 @@
                 <Fragment>
                     <div className="h-screen w-screen flex items-center justify-center p-2 sm:p-4">
                         <div className="w-full h-full max-w-lg sm:max-w-2xl ui-frame flex flex-col overflow-hidden">
-                            <header className="flex justify-between items-center p-2 sm:p-4 flex-shrink-0 border-b border-[var(--border-color)] space-x-2 sm:space-x-4">
-                                <div className="flex-1 flex items-center space-x-2 sm:space-x-4">
-                                    <div className="relative group">
-                                        <img 
-                                            src={userData.avatarUrl} 
-                                            alt="Avatar" 
-                                            className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-white shadow-md cursor-pointer"
-                                            onClick={() => avatarInputRef.current.click()}
-                                            onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/96x96/e2e8f0/64748b?text=${userData.username.charAt(0).toUpperCase()}`; }}
-                                        />
-                                        <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
-                                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {isUploadingAvatar ? 
-                                                <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                : "Đổi"
-                                            }
+                            {/* ======================= HEADER - UPDATED FOR MOBILE ======================= */}
+                            <header className="p-2 sm:p-4 flex-shrink-0 border-b border-[var(--border-color)]">
+                                <div className="flex justify-between items-center space-x-2">
+                                    {/* Left side: Avatar and Info */}
+                                    <div className="flex-1 flex items-center space-x-3 overflow-hidden">
+                                        <div className="relative group flex-shrink-0">
+                                            <img 
+                                                src={userData.avatarUrl} 
+                                                alt="Avatar" 
+                                                className="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-white shadow-md cursor-pointer"
+                                                onClick={() => avatarInputRef.current.click()}
+                                                onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/96x96/e2e8f0/64748b?text=${userData.username.charAt(0).toUpperCase()}`; }}
+                                            />
+                                            <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+                                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {isUploadingAvatar ? 
+                                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                    : "Đổi"
+                                                }
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h2 className="text-base sm:text-xl font-bold text-slate-800 truncate">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
+                                            <EnergyBar current={userData.energy} max={MAX_ENERGY} />
                                         </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <h2 className="text-lg sm:text-xl font-bold text-slate-800">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
-                                        <EnergyBar current={userData.energy} max={MAX_ENERGY} />
+
+                                    {/* Right side: Buttons */}
+                                    <div className="flex flex-col space-y-1.5">
+                                        <button onClick={() => setShowHistoryModal(true)} className="secondary-btn px-2.5 py-1 text-xs whitespace-nowrap">Lịch sử</button>
+                                        <button onClick={onLogout} className="secondary-btn px-2.5 py-1 text-xs whitespace-nowrap">Ngắt kết nối</button>
                                     </div>
                                 </div>
-                                <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                                    <button onClick={() => setShowHistoryModal(true)} className="secondary-btn px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm">Lịch sử</button>
-                                    <button onClick={onLogout} className="secondary-btn px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm">Ngắt kết nối</button>
-                                </div>
                             </header>
+                            {/* ======================= END OF HEADER ======================= */}
                             
                             <main className="flex-1 p-2 sm:p-4 overflow-y-auto custom-scrollbar">
                                {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="user" onImageClick={setShowImageModal} />)}
@@ -849,6 +831,7 @@
             const [selectedTable, setSelectedTable] = useState(BACARAT_TABLES[0]);
             const [editingMsg, setEditingMsg] = useState({ id: null, text: '' });
             const [warningInput, setWarningInput] = useState('');
+            const [emergencyInput, setEmergencyInput] = useState(''); // NEW: State for emergency message
             const messagesEndRef = useRef(null);
             const imageInputRef = useRef(null);
 
@@ -901,17 +884,13 @@
                 const fileRef = storageRef(storage, filePath);
                 
                 try {
-                    // 1. Upload the file
                     const snapshot = await uploadBytes(fileRef, file);
-                    // 2. Get the download URL
                     const downloadURL = await getDownloadURL(snapshot.ref);
-                    // 3. Send the message with the URL
                     await handleSendMessage('image', { url: downloadURL });
                 } catch (error) {
                     console.error("Lỗi tải lên hình ảnh:", error);
                     sfx.error();
                 } finally {
-                    // 4. Always stop the spinner and reset input
                     setUploadingImage(false);
                     if (imageInputRef.current) {
                         imageInputRef.current.value = "";
@@ -1007,6 +986,14 @@
                 handleSendMessage('warning', { text: warningInput.trim() });
                 setWarningInput(''); 
             };
+            
+            // NEW: Handler for sending emergency message
+            const handleSendEmergency = () => {
+                if (!emergencyInput.trim() || !currentChat) return;
+                sfx.error(); // Use an alarming sound
+                handleSendMessage('emergency', { text: emergencyInput.trim() });
+                setEmergencyInput('');
+            };
 
             return (
                  <Fragment>
@@ -1068,7 +1055,7 @@
                                             <div ref={messagesEndRef} />
                                         </main>
                                         <footer className="p-4 border-t border-[var(--border-color)] flex-shrink-0 bg-white space-y-3">
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-bold text-slate-400 w-20">BÁO BÀN:</span>
                                                     <select value={selectedTable} onChange={e => setSelectedTable(e.target.value)} className="form-input text-sm py-1 px-2 w-full">
@@ -1109,6 +1096,25 @@
                                                     Gửi
                                                 </button>
                                             </div>
+                                            {/* NEW: Emergency Message Input */}
+                                            <div className="flex items-center gap-2 pt-3 border-t border-red-200">
+                                                <span className="text-xs font-bold text-red-600 w-20">TIN KHẨN:</span>
+                                                <input
+                                                    type="text"
+                                                    value={emergencyInput}
+                                                    onChange={e => setEmergencyInput(e.target.value)}
+                                                    placeholder="Nội dung khẩn cấp..."
+                                                    className="form-input text-sm py-1 px-2 w-full focus:border-red-500"
+                                                />
+                                                <button
+                                                    onClick={handleSendEmergency}
+                                                    disabled={!emergencyInput.trim()}
+                                                    className="primary-btn text-xs px-4 py-2"
+                                                    style={{'--primary-color': 'var(--danger-color)'}}
+                                                >
+                                                    GỬI KHẨN
+                                                </button>
+                                            </div>
                                             <div className="flex items-center space-x-2 pt-3 border-t border-slate-200">
                                                 <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
                                                 <button onClick={() => imageInputRef.current.click()} disabled={uploadingImage} className="secondary-btn p-2.5">
@@ -1143,44 +1149,8 @@
             );
         };
 
-        const IntroScreen = ({ onBootComplete }) => {
-            const [isFadingOut, setIsFadingOut] = useState(false);
-
-            useEffect(() => {
-                const fadeTimer = setTimeout(() => {
-                    setIsFadingOut(true);
-                }, 2500); // Bắt đầu mờ dần sau 2.5 giây
-
-                const completeTimer = setTimeout(() => {
-                    onBootComplete();
-                }, 3000); // Hoàn thành sau 3 giây
-
-                Tone.start().then(() => {
-                    sfx.bootSequence.triggerAttackRelease("8n");
-                    setTimeout(() => sfx.bootComplete(), 2000);
-                });
-
-                return () => {
-                    clearTimeout(fadeTimer);
-                    clearTimeout(completeTimer);
-                };
-            }, [onBootComplete]);
-
-            return (
-                <div className={`fixed inset-0 flex items-center justify-center intro-screen z-50 transition-opacity duration-500 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-                    <div className="intro-logo-container">
-                        <svg className="intro-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                            <path className="logo-path" d="M 50 15 L 15 85 L 85 85 Z M 50 15 L 25 65 H 75 Z M 40 75 L 60 75" />
-                        </svg>
-                        <h1 className="intro-text">AQUARIUS</h1>
-                    </div>
-                </div>
-            );
-        };
-
         const System = () => {
             const [currentUser, setCurrentUser] = useState(null);
-            const [isBooting, setIsBooting] = useState(true);
             const [isLoading, setIsLoading] = useState(true);
 
             useEffect(() => {
@@ -1215,17 +1185,8 @@
                     console.error("Lỗi khi đăng xuất:", error);
                 });
             };
-            
-            const handleBootComplete = () => {
-                setIsBooting(false);
-            };
-
-            if (isBooting) {
-                return <IntroScreen onBootComplete={handleBootComplete} />;
-            }
 
             if (isLoading) { return <div className="h-screen w-screen"></div>; }
-            
             const isAdmin = currentUser && currentUser.email.split('@')[0] === ADMIN_USERNAME;
 
             return (
@@ -1246,4 +1207,3 @@
     </script>
 </body>
 </html>
-"
