@@ -198,7 +198,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, set, update, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         
         const { useState, useEffect, useRef, Fragment } = React;
@@ -251,6 +251,85 @@
                 <div className={`w-full max-w-${size} ui-frame`} onClick={e => e.stopPropagation()}>{children}</div>
             </div>
         );
+
+        // NEW: Universal Message Renderer Component
+        const MessageRenderer = ({ msg, currentUser, onImageClick, viewType = 'user' }) => {
+            let isMyMessage, isPeerMessage;
+
+            if (viewType === 'user') {
+                isMyMessage = msg.senderId === currentUser.uid;
+                isPeerMessage = !isMyMessage && msg.senderId !== 'AQUARIUS_SYSTEM'; // The admin is the peer
+            } else { // admin view
+                isPeerMessage = msg.senderId !== currentUser.uid && msg.senderId !== 'AQUARIUS_SYSTEM'; // The user is the peer
+                isMyMessage = msg.senderId === currentUser.uid;
+            }
+            const isSystemMessage = msg.senderId === 'AQUARIUS_SYSTEM';
+
+            const renderContent = () => {
+                switch (msg.type) {
+                    case 'text':
+                        return <p className="whitespace-pre-wrap">{msg.text}</p>;
+                    case 'image':
+                        return <img src={msg.content.url} alt="Hình ảnh" className="max-w-xs md:max-w-sm rounded-lg cursor-pointer" onClick={() => onImageClick && onImageClick(msg.content.url)} onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/f87171/white?text=Lỗi+Ảnh'; }} />;
+                    case 'warning':
+                        return <div className="p-3 border-l-4 border-amber-500 bg-amber-50 rounded-r-lg"><p className="font-semibold text-amber-700">Cảnh Báo Hệ Thống</p><p className="text-slate-700">{msg.content.text}</p></div>;
+                    case 'wait':
+                        return <div className="p-3 border-l-4 border-sky-500 bg-sky-50 rounded-r-lg"><p className="text-slate-700">{msg.content.text}</p></div>;
+                    case 'prediction':
+                        return (
+                            <div className="p-3 text-center rounded-lg bg-slate-700 text-white shadow-lg min-w-[150px]">
+                                <p className="text-xs uppercase tracking-wider text-slate-300">{msg.content.table}</p>
+                                <p className="text-2xl font-bold font-orbitron">{msg.content.prediction}</p>
+                            </div>
+                        );
+                    case 'result':
+                        const isWin = msg.content.result === 'Thắng';
+                        return (
+                            <div className={`p-3 text-center rounded-lg shadow-lg ${isWin ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-red-500 to-red-600'} text-white`}>
+                                <p className="text-2xl font-bold font-orbitron">{msg.content.result}!</p>
+                                {msg.content.message && <p className="text-sm">{msg.content.message}</p>}
+                            </div>
+                        );
+                    case 'broadcast':
+                        return (
+                            <div className="p-4 border-2 border-[var(--success-color)] bg-green-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--success-color)'}}>
+                                <h4 className="text-xl font-bold text-[var(--success-color)] uppercase tracking-widest">THÔNG BÁO HỆ THỐNG</h4>
+                                <p className="text-xl font-semibold text-slate-800">{msg.content.text}</p>
+                            </div>
+                        );
+                    case 'blessing':
+                         return (
+                            <div className="p-4 border-2 border-pink-400 bg-pink-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'rgba(219, 39, 119, 0.5)'}}>
+                                 <h4 className="text-xl font-bold text-pink-500 uppercase tracking-widest">BAN PHƯỚC</h4>
+                                 <p className="text-lg font-semibold text-slate-700">{msg.content.plea}</p>
+                                 <p className="text-2xl font-bold text-pink-600 font-orbitron">{msg.content.blessing}</p>
+                                 <p className="text-sm text-slate-500">Năng lượng đã được cộng thêm.</p>
+                             </div>
+                        );
+                    default:
+                        return <p className="whitespace-pre-wrap text-red-500 font-tech-mono">Lỗi: Loại tin nhắn không xác định ({msg.type})</p>;
+                }
+            };
+
+            if (isSystemMessage || msg.type === 'broadcast' || msg.type === 'blessing' || msg.type === 'warning') {
+                return <div className="flex justify-center my-4 w-full">{renderContent()}</div>;
+            }
+            
+            const alignment = isPeerMessage ? 'items-start' : 'items-end';
+            const bubbleStyle = isPeerMessage 
+                ? { background: 'linear-gradient(135deg, #ffffff, #f1f5f9)', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '1rem 1rem 1rem 0.25rem'}
+                : { background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', borderRadius: '1rem 1rem 0.25rem 1rem' };
+
+            return (
+                <div className={`group flex flex-col my-2 ${alignment}`}>
+                    <div className="max-w-lg relative">
+                       <div style={bubbleStyle} className="p-3">
+                           {renderContent()}
+                       </div>
+                    </div>
+                </div>
+            );
+        };
         
         const LoginScreen = () => {
             const [username, setUsername] = useState('');
@@ -337,16 +416,13 @@
             const [inputMessage, setInputMessage] = useState('');
             const [userData, setUserData] = useState(null);
             const [showBlessingModal, setShowBlessingModal] = useState(false);
-            const [showLoanModal, setShowLoanModal] = useState(false);
             const [showHistoryModal, setShowHistoryModal] = useState(false);
             const [showInfoModal, setShowInfoModal] = useState(false);
             const [showImageModal, setShowImageModal] = useState(null);
             const [plea, setPlea] = useState('');
-            const [loanFormData, setLoanFormData] = useState({ accountName: '', amount: '' });
             const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
             const [isAdminTyping, setIsAdminTyping] = useState(false);
             const [blessingCooldown, setBlessingCooldown] = useState("");
-            const [loanCooldown, setLoanCooldown] = useState("");
             const [isSending, setIsSending] = useState(false);
             const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
             const messagesEndRef = useRef(null);
@@ -357,25 +433,24 @@
             
             const useCooldownTimer = (lastTimestamp, setCooldownString) => {
                  useEffect(() => {
-                    if (!userData || !lastTimestamp) { setCooldownString(""); return; }
-                    const interval = setInterval(() => {
-                        const now = Date.now();
-                        const lastTime = lastTimestamp.toMillis();
-                        const twentyFourHours = 24 * 60 * 60 * 1000;
-                        const timePassed = now - lastTime;
-                        if (timePassed < twentyFourHours) {
-                            const timeLeft = twentyFourHours - timePassed;
-                            const hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24);
-                            const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
-                            const seconds = Math.floor((timeLeft / 1000) % 60);
-                            setCooldownString(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-                        } else { setCooldownString(""); clearInterval(interval); }
-                    }, 1000);
-                    return () => clearInterval(interval);
-                }, [userData, lastTimestamp]);
+                     if (!userData || !lastTimestamp) { setCooldownString(""); return; }
+                     const interval = setInterval(() => {
+                         const now = Date.now();
+                         const lastTime = lastTimestamp.toMillis();
+                         const twentyFourHours = 24 * 60 * 60 * 1000;
+                         const timePassed = now - lastTime;
+                         if (timePassed < twentyFourHours) {
+                             const timeLeft = twentyFourHours - timePassed;
+                             const hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24);
+                             const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
+                             const seconds = Math.floor((timeLeft / 1000) % 60);
+                             setCooldownString(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+                         } else { setCooldownString(""); clearInterval(interval); }
+                     }, 1000);
+                     return () => clearInterval(interval);
+                 }, [userData, lastTimestamp]);
             }
             useCooldownTimer(userData?.lastBlessingTimestamp, setBlessingCooldown);
-            useCooldownTimer(userData?.lastLoanRequestTimestamp, setLoanCooldown);
             
             useEffect(() => {
                 if (!currentUser || !userData) return;
@@ -431,15 +506,23 @@
 
                 if (!isFree && !canAfford) {
                     sfx.error();
-                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'warning', content: { text: 'Không đủ năng lượng để gửi tin nhắn.' }, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp() });
+                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'warning', content: { text: 'Không đủ năng lượng để gửi tin nhắn.' }, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp(), reactions: {} });
                     setIsSending(false);
                     return;
                 }
                 sfx.confirm();
                 try {
                     const username = currentUser.email.split('@')[0];
-                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'text', text: content, senderId: currentUser.uid, timestamp: serverTimestamp() });
-                    await setDoc(doc(db, 'user_chats', currentUser.uid), { lastUpdate: serverTimestamp(), username: username, userId: currentUser.uid, isRead: false }, { merge: true });
+                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'text', text: content, senderId: currentUser.uid, timestamp: serverTimestamp(), reactions: {} });
+                    
+                    await setDoc(doc(db, 'user_chats', currentUser.uid), { 
+                        lastUpdate: serverTimestamp(), 
+                        username: username, 
+                        userId: currentUser.uid, 
+                        isRead: false,
+                        avatarUrl: userData.avatarUrl || `https://placehold.co/96x96/e2e8f0/64748b?text=${username.charAt(0).toUpperCase()}`
+                    }, { merge: true });
+
                     const updates = { messageCountToday: increment(1) };
                     if (!isFree) { updates.energy = increment(-7); }
                     await updateDoc(userDocRef, updates);
@@ -449,7 +532,6 @@
             };
             
             const handleBlessingRequest = async () => { /* ... no changes ... */ };
-            const handleLoanRequest = async () => { /* ... no changes ... */ };
             const handleInfoSubmit = async () => { /* ... no changes ... */ };
             const handleReaction = async (messageId, emoji) => {
                 sfx.reaction();
@@ -457,7 +539,6 @@
                 await updateDoc(messageRef, { [`reactions.${emoji}`]: increment(1) });
             };
 
-            // NEW: Handle avatar upload
             const handleAvatarUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -485,34 +566,6 @@
 
             if (!userData) return null;
             
-            const MessageBubble = ({ children, isUser, msg }) => {
-                const reactions = msg.reactions ? Object.entries(msg.reactions).filter(([key, value]) => value > 0) : [];
-                return (
-                    <div className="relative group">
-                        <div 
-                            className={`p-3 rounded-2xl ${isUser ? 'rounded-br-lg' : 'rounded-bl-lg'}`}
-                            style={{ background: isUser ? 'linear-gradient(135deg, #e0f2fe, #dbeafe)' : 'linear-gradient(135deg, #ffffff, #f1f5f9)', border: '1px solid var(--border-color)' }}
-                        >
-                            {children}
-                        </div>
-                        {reactions.length > 0 && (
-                             <div className="absolute -bottom-3 right-2 flex items-center space-x-1 bg-white border border-slate-200 rounded-full px-2 py-0.5 shadow-sm">
-                                {reactions.map(([emoji, count]) => ( <span key={emoji} className="text-xs">{emoji} {count}</span> ))}
-                            </div>
-                        )}
-                        {!isUser && msg.type !== 'blessing' && (
-                            <div className="absolute top-0 -right-10 hidden group-hover:flex space-x-1 bg-white p-1 rounded-full shadow-md border border-slate-200">
-                                {['👍', '❤️', '😂'].map(emoji => (
-                                    <button key={emoji} onClick={() => handleReaction(msg.id, emoji)} className="text-lg hover:scale-125 transition-transform">
-                                        {emoji}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
-            }
-
             const TypingIndicator = () => (
                 <div className="flex mb-4 justify-start">
                     <div className="p-3 rounded-2xl rounded-bl-lg" style={{ background: 'linear-gradient(135deg, #ffffff, #f1f5f9)', border: '1px solid var(--border-color)'}}>
@@ -528,21 +581,19 @@
             const EnergyBar = ({ current, max }) => {
                 const percentage = Math.min(100, (current / max) * 100);
                 return (
-                     <div className="w-full">
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-bold text-[var(--primary-color)]">NĂNG LƯỢNG</span>
-                            <span className="text-sm font-bold text-slate-600">{current} / {max}</span>
+                       <div className="w-full">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-sm font-bold text-[var(--primary-color)]">NĂNG LƯỢNG</span>
+                                <span className="text-sm font-bold text-slate-600">{current} / {max}</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2.5">
+                                <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                            </div>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2.5">
-                            <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
-                        </div>
-                    </div>
                 );
             };
 
             const BlessingHistoryModal = ({ messages, onClose }) => { /* ... no changes ... */ };
-
-            const MessageRenderer = ({ msg }) => { /* ... no changes ... */ };
 
             const sendDisabled = isSending || ((userData?.messageCountToday || 0) >= 2 && userData.energy < 7);
 
@@ -552,7 +603,6 @@
                         <div className="w-full h-full max-w-4xl ui-frame flex flex-col overflow-hidden">
                             <header className="flex justify-between items-center p-4 flex-shrink-0 border-b border-[var(--border-color)] space-x-4">
                                 <div className="flex-1 flex items-center space-x-4">
-                                    {/* NEW: Avatar display and upload */}
                                     <div className="relative group">
                                         <img 
                                             src={userData.avatarUrl} 
@@ -581,7 +631,7 @@
                             </header>
                             
                             <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                               {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} />)}
+                               {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="user" onImageClick={setShowImageModal} />)}
                                {isAdminTyping && <TypingIndicator />}
                                <div ref={messagesEndRef} />
                             </main>
@@ -617,15 +667,14 @@
             const [currentChat, setCurrentChat] = useState(null);
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
-            const [editingMessage, setEditingMessage] = useState({ id: null, text: '' });
             const [uploadingImage, setUploadingImage] = useState(false);
-            const [onlineUsers, setOnlineUsers] = useState([]); // NEW: State for online users
-            const [showBroadcastModal, setShowBroadcastModal] = useState(false); // NEW: State for broadcast modal
-            const [broadcastMessage, setBroadcastMessage] = useState(''); // NEW: State for broadcast message
+            const [onlineUsers, setOnlineUsers] = useState([]);
+            const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+            const [broadcastMessage, setBroadcastMessage] = useState('');
+            const [selectedTable, setSelectedTable] = useState(BACARAT_TABLES[0]); // NEW: State for selected table
             const messagesEndRef = useRef(null);
             const imageInputRef = useRef(null);
 
-            // Fetch conversations and messages (no changes)
             useEffect(() => {
                 const q = query(collection(db, 'user_chats'), orderBy('lastUpdate', 'desc'));
                 const unsub = onSnapshot(q, snapshot => setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
@@ -635,11 +684,12 @@
                 if (!currentChat) return;
                 const q = query(collection(db, 'user_chats', currentChat.id, 'messages'), orderBy('timestamp'));
                 const unsub = onSnapshot(q, snapshot => setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+                // Mark messages as read when admin opens the chat
+                updateDoc(doc(db, 'user_chats', currentChat.id), { isRead: true });
                 return () => unsub();
             }, [currentChat]);
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
             
-            // NEW: Listen for online users
             useEffect(() => {
                 const statusRef = ref(rtdb, 'status');
                 const unsub = onValue(statusRef, (snapshot) => {
@@ -655,25 +705,42 @@
                 return () => unsub();
             }, []);
 
-            const handleTyping = (e) => { /* ... no changes ... */ };
+            const handleTyping = (e) => {
+                // Debounce typing indicator logic if needed
+                const typingRef = ref(rtdb, `typing_status/${currentChat.id}`);
+                set(typingRef, { isTyping: e.target.value.length > 0 });
+            };
             const handleImageUpload = async (event) => { /* ... no changes ... */ };
+            
+            // UPDATED: Handle sending various message types
             const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return;
-                const text = content && content.text ? content.text : inputMessage.trim();
-                if (text === '' && type === 'text') return;
-                
+
+                const textContent = inputMessage.trim();
+                if (type === 'text' && textContent === '') return;
+
                 sfx.confirm();
-                await addDoc(collection(db, 'user_chats', currentChat.id, 'messages'), {
-                    type: type, text: type === 'text' ? text : null, content: type !== 'text' ? content : null,
-                    senderId: currentUser.uid, timestamp: serverTimestamp(), reactions: {}
-                });
-                await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: true });
+                
+                let messageData = {
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp(),
+                    reactions: {}
+                };
+
+                if (type === 'text') {
+                    messageData.type = 'text';
+                    messageData.text = textContent;
+                } else {
+                    messageData.type = type;
+                    messageData.content = content;
+                }
+                
+                await addDoc(collection(db, 'user_chats', currentChat.id, 'messages'), messageData);
+                await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: false }); // Mark as unread for the user
+                
                 if (type === 'text') setInputMessage('');
             };
-            const handleStartEdit = (msg) => { /* ... no changes ... */ };
-            const handleSaveEdit = async () => { /* ... no changes ... */ };
 
-            // NEW: Handle Broadcast Message
             const handleBroadcast = async () => {
                 if (broadcastMessage.trim() === '' || onlineUsers.length === 0) return;
                 sfx.confirm();
@@ -693,42 +760,6 @@
                 setShowBroadcastModal(false);
             };
 
-            const MessageRenderer = ({ msg }) => {
-                const isUserMessage = msg.senderId !== currentUser.uid;
-                const reactions = msg.reactions ? Object.entries(msg.reactions).filter(([key, value]) => value > 0) : [];
-                
-                const renderContent = () => {
-                    switch(msg.type) {
-                        case 'broadcast': return <div className="p-4 border-2 border-[var(--success-color)] bg-green-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--success-color)'}}><h4 className="text-xl font-bold text-[var(--success-color)] uppercase tracking-widest">THÔNG BÁO HỆ THỐNG</h4><p className="text-xl font-semibold text-slate-800">{msg.content.text}</p></div>;
-                        default: return <p className="whitespace-pre-wrap">{msg.text || JSON.stringify(msg.content)}</p>;
-                    }
-                };
-                
-                if (msg.type === 'broadcast') {
-                    return <div className="flex justify-center my-4">{renderContent()}</div>;
-                }
-                
-                 return (
-                     <div className={`group flex flex-col my-2 ${isUserMessage ? 'items-start' : 'items-end'}`}>
-                        <div className={`flex items-end gap-2 ${isUserMessage ? 'flex-row' : 'flex-row-reverse'}`}>
-                            <div className="max-w-lg p-3 rounded-2xl" style={{
-                                background: isUserMessage ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                                color: isUserMessage ? 'var(--text-color)' : 'white',
-                                border: `1px solid ${isUserMessage ? 'var(--border-color)' : 'transparent'}`,
-                                borderRadius: isUserMessage ? '1rem 1rem 1rem 0.25rem' : '1rem 1rem 0.25rem 1rem'
-                             }}>
-                                {msg.type === 'image' ? <img src={msg.content.url} alt="Hình ảnh" className="max-w-xs md:max-w-sm rounded-lg" onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/f87171/white?text=Lỗi+Ảnh'; }} /> : <p className="whitespace-pre-wrap">{msg.text}</p>}
-                            </div>
-                        </div>
-                        {reactions.length > 0 && (
-                             <div className={`flex items-center space-x-1 mt-1 ${isUserMessage ? 'ml-2' : 'mr-2'}`}>
-                                {reactions.map(([emoji, count]) => ( <span key={emoji} className="text-xs bg-slate-200 rounded-full px-2 py-0.5">{emoji} {count}</span> ))}
-                            </div>
-                        )}
-                    </div>
-                );
-            };
-
             return (
                  <Fragment>
                     <div className="h-screen w-screen flex items-center justify-center p-4">
@@ -744,7 +775,7 @@
                                     <div className="max-h-32 overflow-y-auto custom-scrollbar space-y-2">
                                         {onlineUsers.map(user => (
                                             <div key={user.uid} className="flex items-center space-x-2 p-1 bg-slate-200/50 rounded-lg">
-                                                <img src={user.avatarUrl} className="w-8 h-8 rounded-full" onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/32x32/e2e8f0/64748b?text=${user.username.charAt(0).toUpperCase()}`; }} />
+                                                <img src={user.avatarUrl} className="w-8 h-8 rounded-full" onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/32x32/e2e8f0/64748b?text=${(user.username || '?').charAt(0).toUpperCase()}`; }} />
                                                 <span className="font-semibold text-sm text-slate-700">{user.username}</span>
                                             </div>
                                         ))}
@@ -755,7 +786,7 @@
                                     {conversations.map(conv => (
                                         <div key={conv.id} onClick={() => setCurrentChat(conv)} className={`p-4 cursor-pointer border-b border-slate-200 flex justify-between items-center transition-colors duration-200 ${currentChat?.id === conv.id ? 'bg-blue-100' : 'hover:bg-slate-100'}`}>
                                             <div className="flex items-center space-x-3">
-                                                <img src={conv.avatarUrl} className="w-10 h-10 rounded-full" onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/40x40/e2e8f0/64748b?text=${conv.username.charAt(0).toUpperCase()}`; }} />
+                                                <img src={conv.avatarUrl} className="w-10 h-10 rounded-full" onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/40x40/e2e8f0/64748b?text=${(conv.username || '?').charAt(0).toUpperCase()}`; }} />
                                                 <div>
                                                     <p className="font-semibold text-slate-800">{conv.username}</p>
                                                     <p className="text-xs text-slate-500">ID: {conv.id.slice(0, 8)}...</p>
@@ -775,17 +806,36 @@
                                             <h2 className="text-xl font-bold text-slate-800">Kênh: {currentChat.username}</h2>
                                         </header>
                                         <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                                            {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} />)}
+                                            {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="admin" />)}
                                             <div ref={messagesEndRef} />
                                         </main>
                                         <footer className="p-4 border-t border-[var(--border-color)] flex-shrink-0 bg-white space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-slate-400">HÀNH ĐỘNG NHANH:</span>
-                                                <button onClick={() => handleSendMessage('text', {text: 'Xin vui lòng đợi trong giây lát.'})} className="secondary-btn text-xs px-2 py-1">Đợi lát</button>
-                                                <button onClick={() => handleSendMessage('text', {text: 'Bàn thắng!'})} className="secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Thắng</button>
-                                                <button onClick={() => handleSendMessage('text', {text: 'Bàn thua!'})} className="secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Thua</button>
+                                            {/* NEW: Quick action buttons */}
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 w-16">BÁO BÀN:</span>
+                                                    <select value={selectedTable} onChange={e => setSelectedTable(e.target.value)} className="form-input text-sm py-1 px-2 w-full">
+                                                        {BACARAT_TABLES.map(table => <option key={table} value={table}>{table}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                     <span className="text-xs font-bold text-slate-400 w-16">DỰ ĐOÁN:</span>
+                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Con', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50">Con</button>
+                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Cái', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Cái</button>
+                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Hoà', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Hoà</button>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 w-16">PHẢN HỒI:</span>
+                                                    <button onClick={() => handleSendMessage('result', { result: 'Thắng' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Thắng!</button>
+                                                    <button onClick={() => handleSendMessage('result', { result: 'Thua' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Thua!</button>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 w-16">HỆ THỐNG:</span>
+                                                    <button onClick={() => handleSendMessage('wait', { text: 'Xin vui lòng đợi trong giây lát.'})} className="flex-1 secondary-btn text-xs px-2 py-1">Đợi lát</button>
+                                                    <button onClick={() => handleSendMessage('warning', { text: 'Năng lượng của bạn sắp cạn kiệt.'})} className="flex-1 secondary-btn text-xs px-2 py-1 border-amber-500 text-amber-600 hover:bg-amber-50">Cảnh báo</button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center space-x-2">
+                                            <div className="flex items-center space-x-2 pt-3 border-t border-slate-200">
                                                 <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
                                                 <button onClick={() => imageInputRef.current.click()} disabled={uploadingImage} className="secondary-btn p-2.5">
                                                     {uploadingImage ? <svg className="animate-spin h-5 w-5 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
@@ -847,12 +897,14 @@
             }, []);
 
             const handleLogout = () => {
+                sfx.logout();
                 if (auth.currentUser) {
                     const userStatusRef = ref(rtdb, '/status/' + auth.currentUser.uid);
-                    updateDoc(userStatusRef, { isOnline: false, lastSeen: rtdbServerTimestamp() });
+                    update(userStatusRef, { isOnline: false, lastSeen: rtdbServerTimestamp() });
                 }
-                sfx.logout();
-                signOut(auth);
+                signOut(auth).catch(error => {
+                    console.error("Lỗi khi đăng xuất:", error);
+                });
             };
 
             if (isLoading) { return <div className="h-screen w-screen"></div>; }
