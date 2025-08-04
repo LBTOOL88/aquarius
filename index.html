@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aquarius V - Upgraded</title>
+    <title>Aquarius V - SIÊU TRÍ TUỆ</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -148,6 +148,12 @@
         .intro-screen {
             background-color: var(--bg-color);
         }
+        .intro-logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
         .intro-logo {
             width: 150px;
             height: 150px;
@@ -165,6 +171,25 @@
         @keyframes draw-logo {
             to {
                 stroke-dashoffset: 0;
+            }
+        }
+        .intro-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--primary-color);
+            letter-spacing: 0.2em;
+            opacity: 0;
+            animation: fadeInText 1.5s ease-in-out 0.5s forwards;
+            text-shadow: 0 0 10px rgba(37, 99, 235, 0.2);
+        }
+        @keyframes fadeInText {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
     </style>
@@ -491,7 +516,7 @@
                 <div className="min-h-screen flex items-center justify-center p-4">
                     <div className="w-full max-w-md ui-frame">
                         <div className="text-center mb-8">
-                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.8</h1>
+                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V</h1>
                             <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono">SIÊU TRÍ TUỆ</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -1143,9 +1168,12 @@
 
             return (
                 <div className={`fixed inset-0 flex items-center justify-center intro-screen z-50 transition-opacity duration-500 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-                    <svg className="intro-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <path className="logo-path" d="M 50 15 L 15 85 L 85 85 Z M 50 15 L 25 65 H 75 Z M 40 75 L 60 75" />
-                    </svg>
+                    <div className="intro-logo-container">
+                        <svg className="intro-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <path className="logo-path" d="M 50 15 L 15 85 L 85 85 Z M 50 15 L 25 65 H 75 Z M 40 75 L 60 75" />
+                        </svg>
+                        <h1 className="intro-text">AQUARIUS</h1>
+                    </div>
                 </div>
             );
         };
@@ -1218,3 +1246,4 @@
     </script>
 </body>
 </html>
+"
