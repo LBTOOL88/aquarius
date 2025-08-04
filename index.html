@@ -32,6 +32,7 @@
             --secondary-color: #db2777; /* Pink 600 */
             --warning-color: #f59e0b; /* Amber 500 */
             --danger-color: #dc2626; /* Red 600 */
+            --success-color: #16a34a; /* Green 600 */
             --bg-color: #f1f5f9; /* Slate 100 */
             --text-color: #1e293b; /* Slate 800 */
             --border-color: rgba(30, 41, 59, 0.2);
@@ -148,7 +149,8 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.position.z = 5;
 
-        const particleCount = 5000;
+        // --- PERFORMANCE OPTIMIZATION: Reduced particle count from 5000 to 1500 ---
+        const particleCount = 1500;
         const positions = new Float32Array(particleCount * 3);
         const colors = new Float32Array(particleCount * 3);
         const color = new THREE.Color();
@@ -161,7 +163,6 @@
             positions[i * 3 + 1] = y;
             positions[i * 3 + 2] = z;
 
-            // Use a brighter color palette
             const randomColor = Math.random();
             if (randomColor > 0.66) color.set(0x2563eb); // Blue
             else if (randomColor > 0.33) color.set(0xdb2777); // Pink
@@ -177,7 +178,7 @@
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
         const material = new THREE.PointsMaterial({
-            size: 0.02,
+            size: 0.025, // Slightly larger for visibility
             vertexColors: true,
             transparent: true,
             opacity: 0.8,
@@ -219,7 +220,6 @@
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        // NEW: Import Firebase Storage
         import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         
         const { useState, useEffect, useRef, Fragment } = React;
@@ -243,7 +243,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const rtdb = getDatabase(app);
-        const storage = getStorage(app); // NEW: Initialize Storage
+        const storage = getStorage(app);
 
         // --- GLOBAL CONSTANTS ---
         const BACARAT_TABLES = ["BACARAT C04", "BACARAT C05", "BACARAT C06", "BACARAT C07", "BACARAT C01", "BACARAT C02", "BACARAT C03", "BACARAT C08", "BACARAT C09", "BACARAT C10", "BACARAT 1", "BACARAT 2", "BACARAT 3", "BACARAT 4", "BACARAT 5", "BACARAT 7", "BACARAT 8", "BACARAT 9", "BACARAT 10", "BACARAT C11", "BACARAT C12", "BACARAT C13", "BACARAT C15"];
@@ -257,6 +257,7 @@
             logout: () => new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 0.2 } }).toDestination().triggerAttackRelease("C4", "4n"),
             error: () => new Tone.NoiseSynth({ noise: { type: "pink" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination().triggerAttackRelease("8n"),
             notification: () => new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } }).toDestination().triggerAttackRelease("G5", "16n", Tone.now() + 0.1).triggerAttackRelease("C6", "16n", Tone.now() + 0.2),
+            blessing: () => new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.2, decay: 0.3, sustain: 0.5, release: 0.5 } }).toDestination().triggerAttackRelease("A4", "2n"),
         };
 
         // --- HELPER COMPONENTS & HOOKS ---
@@ -337,7 +338,7 @@
                 <div className="min-h-screen flex items-center justify-center p-4">
                     <div className="w-full max-w-md ui-frame">
                         <div className="text-center mb-8">
-                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2</h1>
+                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.1</h1>
                             <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono">SIÊU TRÍ TUỆ</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -369,7 +370,7 @@
             const [showLoanModal, setShowLoanModal] = useState(false);
             const [showHistoryModal, setShowHistoryModal] = useState(false);
             const [showInfoModal, setShowInfoModal] = useState(false);
-            const [showImageModal, setShowImageModal] = useState(null); // NEW: For viewing images
+            const [showImageModal, setShowImageModal] = useState(null);
             const [plea, setPlea] = useState('');
             const [loanFormData, setLoanFormData] = useState({ accountName: '', amount: '' });
             const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
@@ -381,8 +382,8 @@
 
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isAdminTyping]);
             
-            // Notification and Cooldown Hooks (No changes)
             useEffect(() => { if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } }, []);
+            
             const useCooldownTimer = (lastTimestamp, setCooldownString) => {
                  useEffect(() => {
                     if (!userData || !lastTimestamp) { setCooldownString(""); return; }
@@ -404,6 +405,7 @@
             }
             useCooldownTimer(userData?.lastBlessingTimestamp, setBlessingCooldown);
             useCooldownTimer(userData?.lastLoanRequestTimestamp, setLoanCooldown);
+            
             useEffect(() => {
                 if (!currentUser || !userData) return;
                 const todayStr = new Date().toISOString().split('T')[0];
@@ -413,7 +415,6 @@
                 }
             }, [currentUser, userData]);
 
-            // Data fetching useEffect (No changes, just works)
             useEffect(() => {
                 if (!currentUser) return;
                 const userDocRef = doc(db, 'users', currentUser.uid);
@@ -433,7 +434,7 @@
                             if (newMessage.senderId !== currentUser.uid) {
                                 sfx.notification();
                                 if (document.hidden && Notification.permission === "granted") {
-                                    new Notification("Tin nhắn mới từ Aquarius V2", {
+                                    new Notification("Tin nhắn mới từ Aquarius V2.1", {
                                         body: newMessage.text || "Bạn có một tin nhắn mới.",
                                         icon: "https://placehold.co/96x96/2563eb/white?text=A"
                                     });
@@ -448,7 +449,6 @@
                 return () => { unsubUser(); unsubMessages(); unsubTyping(); };
             }, [currentUser]);
 
-            // Handle Send Message (No changes in logic)
             const handleSendMessage = async () => {
                 const content = inputMessage.trim();
                 if (content === '' || isSending || !userData) return;
@@ -479,14 +479,45 @@
                 finally { setIsSending(false); }
             };
             
-            // Other handlers (Blessing, Loan, Info) - No changes
-            const handleBlessingRequest = async () => { /* ... no changes ... */ };
-            const handleLoanRequest = async () => { /* ... no changes ... */ };
-            const handleInfoSubmit = async () => { /* ... no changes ... */ };
+            const handleBlessingRequest = async () => {
+                if(plea.trim() === '' || blessingCooldown) return;
+                sfx.blessing();
+                setShowBlessingModal(false);
+                const blessing = { table: BACARAT_TABLES[Math.floor(Math.random() * BACARAT_TABLES.length)], side: Math.random() < 0.5 ? 'NHÀ CON' : 'NHÀ CÁI', hand: Math.floor(Math.random() * 16) + 15 };
+                await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'blessing', content: blessing, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp() });
+                await updateDoc(doc(db, 'users', currentUser.uid), { lastBlessingTimestamp: serverTimestamp() });
+                setPlea('');
+            };
+
+            const handleLoanRequest = async () => {
+                if (!loanFormData.accountName.trim() || !loanFormData.amount.trim() || loanCooldown) return;
+                sfx.confirm();
+                setShowLoanModal(false);
+                await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), {
+                    type: 'loan_request_details',
+                    content: {
+                        ...loanFormData,
+                        requestText: 'NGƯỜI DÙNG ĐÃ GỬI YÊU CẦU ỨNG TIỀN, VUI LÒNG ĐỢI'
+                    },
+                    senderId: currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+                await updateDoc(doc(db, 'users', currentUser.uid), { lastLoanRequestTimestamp: serverTimestamp() });
+                await setDoc(doc(db, 'user_chats', currentUser.uid), { lastUpdate: serverTimestamp(), isRead: false }, { merge: true });
+                setLoanFormData({ accountName: '', amount: '' });
+            };
+
+            const handleInfoSubmit = async () => {
+                const { f168Account, capital, target } = infoFormData;
+                if (!f168Account || !capital || !target) return;
+                sfx.confirm();
+                await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'info_submission', content: { f168Account, capital, target }, senderId: currentUser.uid, timestamp: serverTimestamp() });
+                await updateDoc(doc(db, 'users', currentUser.uid), { hasSubmittedInfo: true });
+                setShowInfoModal(false);
+            };
 
             if (!userData) return null;
             
-            // --- UI COMPONENTS ---
             const MessageBubble = ({ children, isUser, className }) => {
                 const style = {
                     background: isUser
@@ -527,12 +558,34 @@
                 );
             };
 
+            // NEW: Blessing History Modal Component
+            const BlessingHistoryModal = ({ messages, onClose }) => {
+                const blessingMessages = messages.filter(m => m.type === 'blessing').reverse();
+                return (
+                    <Modal onClose={onClose} size="lg">
+                        <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Lịch sử Ban Phước</h3>
+                        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
+                            {blessingMessages.length > 0 ? blessingMessages.map(msg => (
+                                <div key={msg.id} className="p-4 border-2 border-pink-200 bg-pink-50 rounded-lg text-center space-y-1 shadow-lg shadow-pink-500/10 mb-4">
+                                    <p className="text-sm text-gray-500">{msg.timestamp?.toDate().toLocaleString('vi-VN')}</p>
+                                    <p><span className="font-semibold text-[var(--secondary-color)]">Bàn:</span> {msg.content.table}</p>
+                                    <p><span className="font-semibold text-[var(--secondary-color)]">Kết quả:</span> {msg.content.side}</p>
+                                    <p><span className="font-semibold text-[var(--secondary-color)]">Tay thứ:</span> {msg.content.hand}</p>
+                                </div>
+                            )) : <p className="text-center text-gray-500">Chưa có lịch sử ban phước.</p>}
+                        </div>
+                        <div className="flex justify-end mt-6">
+                            <button onClick={onClose} className="primary-btn">Đóng</button>
+                        </div>
+                    </Modal>
+                )
+            };
+
             const MessageRenderer = ({ msg }) => {
                 const isUser = msg.senderId === currentUser.uid;
                 
                 const renderContent = () => {
                     switch(msg.type) {
-                        // NEW: Image message type
                         case 'image': return (
                             <img 
                                 src={msg.content.url} 
@@ -581,6 +634,8 @@
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button onClick={() => setShowLoanModal(true)} disabled={!!loanCooldown} className="secondary-btn px-4 py-2 text-sm disabled:opacity-50" >{loanCooldown ? <span className="font-tech-mono text-xs">{loanCooldown}</span> : 'Ứng tiền'}</button>
+                                    {/* NEW: History button added back */}
+                                    <button onClick={() => setShowHistoryModal(true)} className="secondary-btn px-4 py-2 text-sm">Lịch sử</button>
                                     <button onClick={onLogout} className="secondary-btn px-4 py-2">Ngắt kết nối</button>
                                 </div>
                             </header>
@@ -611,7 +666,6 @@
                         </div>
                     </div>
                     
-                    {/* Modals (No major changes, just styling) */}
                     <AnimatedPresence isVisible={showBlessingModal}>
                         <Modal onClose={() => setShowBlessingModal(false)}>
                             <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Thỉnh Cầu Ban Phước</h3>
@@ -636,14 +690,17 @@
                             </div>
                         </Modal>
                     </AnimatedPresence>
-                    {/* NEW: Image Viewer Modal */}
-                    <AnimatedPresence isVisible={!!showImageModal}>
+                    <AnimatedPresence isVisible={showImageModal}>
                         <Modal onClose={() => setShowImageModal(null)} size="3xl">
                            <img src={showImageModal} className="w-full h-auto max-h-[80vh] object-contain rounded-lg"/>
                            <div className="text-center mt-4">
                                <button onClick={() => setShowImageModal(null)} className="primary-btn">Đóng</button>
                            </div>
                         </Modal>
+                    </AnimatedPresence>
+                    {/* NEW: Blessing History Modal added */}
+                    <AnimatedPresence isVisible={showHistoryModal}>
+                        <BlessingHistoryModal messages={messages} onClose={() => setShowHistoryModal(false)} />
                     </AnimatedPresence>
                 </Fragment>
             );
@@ -658,12 +715,11 @@
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
             const [editingMessage, setEditingMessage] = useState({ id: null, text: '' });
-            const [uploadingImage, setUploadingImage] = useState(false); // NEW: Image upload state
+            const [uploadingImage, setUploadingImage] = useState(false);
             const messagesEndRef = useRef(null);
             const typingTimeoutRef = useRef(null);
-            const imageInputRef = useRef(null); // NEW: Ref for file input
+            const imageInputRef = useRef(null);
 
-            // Hooks for conversations, messages, typing (No changes)
             useEffect(() => {
                 const q = query(collection(db, 'user_chats'), orderBy('lastUpdate', 'desc'));
                 const unsub = onSnapshot(q, snapshot => setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
@@ -677,29 +733,31 @@
                 return () => unsub();
             }, [currentChat]);
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-            const handleTyping = (e) => { /* ... no changes ... */ };
+            
+            const handleTyping = (e) => {
+                if (!currentChat) return;
+                setInputMessage(e.target.value);
+                const typingRef = ref(rtdb, `typing_status/${currentChat.id}`);
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                else set(typingRef, { isTyping: true });
+                typingTimeoutRef.current = setTimeout(() => {
+                    set(typingRef, { isTyping: false });
+                    typingTimeoutRef.current = null;
+                }, 2000);
+            };
 
-            // --- NEW: Image Upload Handler ---
             const handleImageUpload = async (event) => {
                 const file = event.target.files[0];
                 if (!file || !currentChat) return;
-                if (!file.type.startsWith('image/')) {
-                    alert('Vui lòng chỉ chọn file ảnh!');
-                    return;
-                }
+                if (!file.type.startsWith('image/')) { alert('Vui lòng chỉ chọn file ảnh!'); return; }
                 setUploadingImage(true);
                 try {
                     const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`;
                     const fileRef = storageRef(storage, filePath);
                     const uploadTask = uploadBytesResumable(fileRef, file);
-                    
                     uploadTask.on('state_changed', 
-                        (snapshot) => { /* Can be used for progress bar */ }, 
-                        (error) => {
-                            console.error("Upload failed:", error);
-                            sfx.error();
-                            setUploadingImage(false);
-                        }, 
+                        () => {}, 
+                        (error) => { console.error("Upload failed:", error); sfx.error(); setUploadingImage(false); }, 
                         () => {
                             getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
                                 handleSendMessage('image', { url: downloadURL });
@@ -707,12 +765,7 @@
                             });
                         }
                     );
-                } catch (error) {
-                    console.error("Error uploading image:", error);
-                    sfx.error();
-                    setUploadingImage(false);
-                }
-                // Reset file input
+                } catch (error) { console.error("Error uploading image:", error); sfx.error(); setUploadingImage(false); }
                 event.target.value = null;
             };
 
@@ -734,19 +787,74 @@
                 if (type === 'text') setInputMessage('');
             };
             
-            // Edit/Save handlers (No changes)
             const handleStartEdit = (msg) => setEditingMessage({ id: msg.id, text: msg.text });
-            const handleSaveEdit = async () => { /* ... no changes ... */ };
+            const handleSaveEdit = async () => {
+                if (!currentChat || !editingMessage.id) return;
+                const msgRef = doc(db, 'user_chats', currentChat.id, 'messages', editingMessage.id);
+                await updateDoc(msgRef, { text: editingMessage.text });
+                setEditingMessage({ id: null, text: '' });
+                sfx.confirm();
+            };
+
+            // --- NEW: System Status Panel Component ---
+            const SystemStatusPanel = () => {
+                const [status, setStatus] = useState({ cpu: 0, mem: 0, temp: 0 });
+
+                useEffect(() => {
+                    const interval = setInterval(() => {
+                        setStatus({
+                            cpu: Math.random() * (75 - 30) + 30,
+                            mem: Math.random() * (80 - 50) + 50,
+                            temp: Math.random() * (65 - 45) + 45,
+                        });
+                    }, 2000);
+                    return () => clearInterval(interval);
+                }, []);
+
+                const StatusBar = ({ label, value, colorClass, unit }) => (
+                    <div>
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="font-bold text-sm text-slate-600">{label}</span>
+                            <span className="font-tech-mono text-lg font-bold">{value.toFixed(1)}{unit}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                            <div className={`h-2 rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${value}%` }}></div>
+                        </div>
+                    </div>
+                );
+
+                return (
+                    <div className="p-4 border-t border-[var(--border-color)] space-y-4">
+                        <h3 className="font-orbitron text-center font-bold text-slate-700">TRẠNG THÁI HỆ THỐNG</h3>
+                        <StatusBar label="CPU LOAD" value={status.cpu} colorClass="bg-blue-500" unit="%" />
+                        <StatusBar label="MEMORY" value={status.mem} colorClass="bg-pink-500" unit="%" />
+                        <StatusBar label="CORE TEMP" value={status.temp} colorClass="bg-amber-500" unit="°C" />
+                    </div>
+                );
+            };
 
             const MessageRenderer = ({ msg }) => {
                 const isUserMessage = msg.senderId !== currentUser.uid;
                 const isEditing = editingMessage.id === msg.id;
 
-                if (isEditing) { /* ... no changes ... */ }
+                if (isEditing) {
+                     return (
+                        <div className="my-2 p-2 bg-slate-200 rounded">
+                            <textarea 
+                                value={editingMessage.text} 
+                                onChange={(e) => setEditingMessage({...editingMessage, text: e.target.value})}
+                                className="w-full form-input bg-white p-2"
+                            />
+                            <div className="flex justify-end space-x-2 mt-2">
+                                <button onClick={() => setEditingMessage({id: null, text: ''})} className="secondary-btn text-xs px-2 py-1">Hủy</button>
+                                <button onClick={handleSaveEdit} className="primary-btn text-xs px-2 py-1">Lưu</button>
+                            </div>
+                        </div>
+                    );
+                }
                 
                 const renderContent = () => {
                     switch(msg.type) {
-                        // NEW: Render image in admin panel
                         case 'image': return (
                             <img 
                                 src={msg.content.url} 
@@ -760,23 +868,30 @@
                         case 'table_announcement': return <div className="p-4 border-2 border-[var(--warning-color)] bg-amber-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--warning-color)'}}><h4 className="text-xl font-bold text-[var(--warning-color)] uppercase tracking-widest">THÔNG BÁO BÀN</h4><p className="text-2xl font-bold text-slate-800">{msg.content.text}</p></div>;
                         case 'warning': return <div className="p-4 border-2 border-[var(--danger-color)] bg-red-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--danger-color)'}}><h4 className="text-xl font-bold text-[var(--danger-color)] uppercase tracking-widest">CẢNH BÁO</h4><p className="text-xl font-semibold text-slate-800">{msg.content.text}</p></div>;
                         case 'wait_message': return <p className="text-cyan-600 italic text-center">-- {msg.content.text} --</p>;
-                        default: return <p className="text-slate-800 text-lg whitespace-pre-wrap">{msg.text || JSON.stringify(msg.content)}</p>;
+                        default: return <p className="text-white text-lg whitespace-pre-wrap">{msg.text || JSON.stringify(msg.content)}</p>;
                     }
                 };
                 
                 const isSpecialMessage = ['baccarat_result', 'table_announcement', 'wait_message', 'loan_request_details', 'warning'].includes(msg.type);
                 if (isSpecialMessage) return <div className="flex justify-center my-4">{renderContent()}</div>;
                 
-                const isEditable = msg.type === 'text' || (!msg.type && msg.text);
+                const isEditable = (msg.type === 'text' || (!msg.type && msg.text)) && !isUserMessage;
 
                 return (
-                     <div className={`group flex items-end gap-2 my-2 ${!isUserMessage ? 'justify-end' : 'justify-start'}`}>
+                     <div className={`group flex items-end gap-2 my-2 ${isUserMessage ? 'justify-start' : 'justify-end'}`}>
+                        {isEditable && (
+                            <div className="hidden group-hover:flex items-center">
+                                <button onClick={() => handleStartEdit(msg)} className="text-slate-400 hover:text-blue-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536l12.232-12.232z" /></svg>
+                                </button>
+                            </div>
+                        )}
                         <div className="max-w-lg">
                              <div className="p-3 rounded-2xl" style={{
-                                background: !isUserMessage ? 'linear-gradient(135deg, #2563eb, #3b82f6)' : 'linear-gradient(135deg, #ffffff, #f1f5f9)',
-                                color: !isUserMessage ? 'white' : 'var(--text-color)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: !isUserMessage ? '1rem 1rem 0.25rem 1rem' : '1rem 1rem 1rem 0.25rem'
+                                background: isUserMessage ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                                color: isUserMessage ? 'var(--text-color)' : 'white',
+                                border: `1px solid ${isUserMessage ? 'var(--border-color)' : 'transparent'}`,
+                                borderRadius: isUserMessage ? '1rem 1rem 1rem 0.25rem' : '1rem 1rem 0.25rem 1rem'
                              }}>
                                 {renderContent()}
                             </div>
@@ -809,6 +924,8 @@
                                     </div>
                                 ))}
                             </div>
+                            {/* NEW: System Status Panel Added */}
+                            <SystemStatusPanel />
                         </div>
 
                         {/* Chat Window */}
@@ -822,10 +939,8 @@
                                         {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} />)}
                                         <div ref={messagesEndRef} />
                                     </main>
-                                    <footer className="p-4 border-t border-[var(--border-color)] flex-shrink-0 space-y-3 bg-white">
-                                        {/* Quick Actions (Baccarat, etc.) can go here if needed */}
+                                    <footer className="p-4 border-t border-[var(--border-color)] flex-shrink-0 bg-white">
                                         <div className="flex items-center space-x-2">
-                                            {/* NEW: Image upload button */}
                                             <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
                                             <button 
                                                 onClick={() => imageInputRef.current.click()} 
