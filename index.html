@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aquarius V</title>
+    <title>Aquarius V - Upgraded</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -125,6 +125,16 @@
             0% { box-shadow: 0 0 0 0px var(--glow-color, rgba(245, 158, 11, 0.5)); }
             70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0)); }
             100% { box-shadow: 0 0 0 0px rgba(245, 158, 11, 0)); }
+        }
+        
+        @keyframes blink-warning {
+            50% {
+                background-color: var(--warning-color);
+                border-color: var(--warning-color);
+            }
+        }
+        .flashing-warning {
+            animation: blink-warning 1.5s step-end infinite;
         }
     </style>
 </head>
@@ -252,14 +262,15 @@
             </div>
         );
 
-        // Universal Message Renderer Component - HARDENED
-        const MessageRenderer = ({ msg, currentUser, onImageClick, viewType = 'user' }) => {
+        // Universal Message Renderer Component - UPGRADED
+        const MessageRenderer = ({ msg, currentUser, onImageClick, viewType = 'user', editingMsg, onStartEdit, onSaveEdit, onCancelEdit, onUpdateEditingText }) => {
             if (!msg || !msg.type) {
                 return null; // Don't render if message is invalid
             }
             
-            let isMyMessage, isPeerMessage;
+            const isEditingThisMessage = editingMsg?.id === msg.id;
 
+            let isMyMessage, isPeerMessage;
             if (viewType === 'user') {
                 isMyMessage = msg.senderId === currentUser?.uid;
                 isPeerMessage = !isMyMessage && msg.senderId !== 'AQUARIUS_SYSTEM';
@@ -270,6 +281,24 @@
             const isSystemMessage = msg.senderId === 'AQUARIUS_SYSTEM';
 
             const renderContent = () => {
+                // Handle editing mode for text messages
+                if (isEditingThisMessage && msg.type === 'text') {
+                    return (
+                        <div className="flex flex-col gap-2">
+                            <textarea
+                                value={editingMsg.text}
+                                onChange={(e) => onUpdateEditingText(e.target.value)}
+                                className="w-full form-input bg-white text-sm"
+                                rows="3"
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button onClick={onCancelEdit} className="secondary-btn text-xs px-3 py-1">Hủy</button>
+                                <button onClick={onSaveEdit} className="primary-btn text-xs px-3 py-1">Lưu</button>
+                            </div>
+                        </div>
+                    );
+                }
+
                 // Use optional chaining (?.) extensively to prevent crashes from malformed data
                 switch (msg.type) {
                     case 'text':
@@ -277,13 +306,16 @@
                     case 'image':
                         return <img src={msg.content?.url} alt="Hình ảnh" className="max-w-xs md:max-w-sm rounded-lg cursor-pointer" onClick={() => onImageClick && onImageClick(msg.content?.url)} onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/f87171/white?text=Lỗi+Ảnh'; }} />;
                     case 'warning':
-                        return <div className="p-3 border-l-4 border-amber-500 bg-amber-50 rounded-r-lg"><p className="font-semibold text-amber-700">Cảnh Báo Hệ Thống</p><p className="text-slate-700">{msg.content?.text}</p></div>;
+                        return <div className="p-3 border-l-4 border-amber-500 bg-amber-50 rounded-r-lg flashing-warning"><p className="font-semibold text-amber-700">Cảnh Báo Hệ Thống</p><p className="text-slate-700">{msg.content?.text}</p></div>;
                     case 'wait':
                         return <div className="p-3 border-l-4 border-sky-500 bg-sky-50 rounded-r-lg"><p className="text-slate-700">{msg.content?.text}</p></div>;
                     case 'prediction':
+                        const isCai = msg.content?.prediction === 'Nhà Cái';
+                        const isCon = msg.content?.prediction === 'Nhà Con';
+                        const bgColor = isCai ? 'bg-red-600' : isCon ? 'bg-blue-600' : 'bg-green-600';
                         return (
-                            <div className="p-3 text-center rounded-lg bg-slate-700 text-white shadow-lg min-w-[150px]">
-                                <p className="text-xs uppercase tracking-wider text-slate-300">{msg.content?.table}</p>
+                            <div className={`p-3 text-center rounded-lg ${bgColor} text-white shadow-lg min-w-[150px]`}>
+                                <p className="text-xs uppercase tracking-wider text-slate-200">{msg.content?.table}</p>
                                 <p className="text-2xl font-bold font-orbitron">{msg.content?.prediction}</p>
                             </div>
                         );
@@ -300,6 +332,13 @@
                             <div className="p-4 border-2 border-[var(--success-color)] bg-green-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--success-color)'}}>
                                 <h4 className="text-xl font-bold text-[var(--success-color)] uppercase tracking-widest">THÔNG BÁO HỆ THỐNG</h4>
                                 <p className="text-xl font-semibold text-slate-800">{msg.content?.text}</p>
+                            </div>
+                        );
+                    case 'table_announcement':
+                        return (
+                            <div className="p-4 border-2 border-[var(--primary-color)] bg-blue-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'var(--primary-color)'}}>
+                                <h4 className="text-xl font-bold text-[var(--primary-color)] uppercase tracking-widest">XÁC NHẬN BÀN</h4>
+                                <p className="text-2xl font-bold text-slate-800 font-orbitron">{msg.content?.table}</p>
                             </div>
                         );
                     case 'blessing':
@@ -331,7 +370,7 @@
                 }
             };
 
-            if (isSystemMessage || ['broadcast', 'blessing', 'warning', 'info_submission'].includes(msg.type)) {
+            if (isSystemMessage || ['broadcast', 'blessing', 'warning', 'info_submission', 'table_announcement'].includes(msg.type)) {
                 return <div className="flex justify-center my-4 w-full">{renderContent()}</div>;
             }
             
@@ -346,6 +385,15 @@
                        <div style={bubbleStyle} className="p-3">
                            {renderContent()}
                        </div>
+                       {viewType === 'admin' && msg.type === 'text' && !isEditingThisMessage && (
+                           <div className="absolute top-0 -left-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button onClick={() => onStartEdit(msg)} className="p-1.5 bg-white rounded-full shadow-md hover:bg-slate-200">
+                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
+                                   </svg>
+                               </button>
+                           </div>
+                       )}
                     </div>
                 </div>
             );
@@ -410,7 +458,7 @@
                 <div className="min-h-screen flex items-center justify-center p-4">
                     <div className="w-full max-w-md ui-frame">
                         <div className="text-center mb-8">
-                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.3</h1>
+                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.5</h1>
                             <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono">SIÊU TRÍ TUỆ</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -500,7 +548,7 @@
                             if (newMessage.senderId !== currentUser.uid) {
                                 sfx.notification();
                                 if (document.hidden && Notification.permission === "granted") {
-                                    new Notification("Tin nhắn mới từ Aquarius V2.3", {
+                                    new Notification("Tin nhắn mới từ Aquarius", {
                                         body: newMessage.text || "Bạn có một tin nhắn mới.",
                                         icon: "https://placehold.co/96x96/2563eb/white?text=A"
                                     });
@@ -741,7 +789,8 @@
             const [showBroadcastModal, setShowBroadcastModal] = useState(false);
             const [broadcastMessage, setBroadcastMessage] = useState('');
             const [selectedTable, setSelectedTable] = useState(BACARAT_TABLES[0]);
-            const [sendError, setSendError] = useState('');
+            const [editingMsg, setEditingMsg] = useState({ id: null, text: '' });
+            const [warningInput, setWarningInput] = useState('');
             const messagesEndRef = useRef(null);
             const imageInputRef = useRef(null);
 
@@ -752,8 +801,8 @@
             }, []);
             
             useEffect(() => {
-                setSendError('');
                 if (!currentChat) return;
+                setEditingMsg({ id: null, text: '' }); // Reset edit state when changing chat
                 const q = query(collection(db, 'user_chats', currentChat.id, 'messages'), orderBy('timestamp'));
                 const unsub = onSnapshot(q, snapshot => setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
                 updateDoc(doc(db, 'user_chats', currentChat.id), { isRead: true });
@@ -777,18 +826,41 @@
                 return () => unsub();
             }, []);
 
-            // FIX: Added setInputMessage to update the input field's state
             const handleTyping = (e) => {
-                setInputMessage(e.target.value); // This line was missing
+                setInputMessage(e.target.value);
                 if (!currentChat) return;
                 const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`);
                 set(typingRef, { isTyping: e.target.value.length > 0 });
             };
-            const handleImageUpload = async (event) => { /* ... no changes ... */ };
+
+            const handleImageUpload = (event) => {
+                if (!currentChat) return;
+                const file = event.target.files[0];
+                if (!file) return;
+
+                setUploadingImage(true);
+                const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`;
+                const fileRef = storageRef(storage, filePath);
+                const uploadTask = uploadBytesResumable(fileRef, file);
+
+                uploadTask.on('state_changed',
+                    null,
+                    (error) => {
+                        console.error("Image upload error:", error);
+                        sfx.error();
+                        setUploadingImage(false);
+                    },
+                    () => {
+                        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                            await handleSendMessage('image', { url: downloadURL });
+                            setUploadingImage(false);
+                        });
+                    }
+                );
+            };
             
             const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return;
-                setSendError('');
 
                 const textContent = inputMessage.trim();
                 if (type === 'text' && textContent === '') return;
@@ -811,26 +883,50 @@
                     }
                     
                     await addDoc(collection(db, 'user_chats', currentChat.id, 'messages'), messageData);
-                    await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: false });
+                    await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: true });
                     
-                    if (type === 'text') setInputMessage('');
+                    if (type === 'text') {
+                        setInputMessage('');
+                        const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`);
+                        set(typingRef, { isTyping: false });
+                    }
                 } catch (error) {
                     console.error("Lỗi khi gửi tin nhắn:", error);
                     sfx.error();
-                    if (error.code === 'permission-denied') {
-                        setSendError('Lỗi: Không có quyền gửi tin nhắn cho người dùng này. Vui lòng kiểm tra lại quy tắc bảo mật Firestore.');
-                    } else {
-                        setSendError(`Lỗi không xác định: ${error.message}`);
-                    }
+                }
+            };
+            
+            const handleStartEdit = (msg) => {
+                setEditingMsg({ id: msg.id, text: msg.text || '' });
+            };
+
+            const handleCancelEdit = () => {
+                setEditingMsg({ id: null, text: '' });
+            };
+
+            const handleSaveEdit = async () => {
+                if (!editingMsg.id || !currentChat) return;
+                const msgDocRef = doc(db, 'user_chats', currentChat.id, 'messages', editingMsg.id);
+                try {
+                    await updateDoc(msgDocRef, {
+                        text: editingMsg.text,
+                        edited: true,
+                        editedAt: serverTimestamp()
+                    });
+                    handleCancelEdit();
+                    sfx.confirm();
+                } catch (error) {
+                    console.error("Error updating message:", error);
+                    sfx.error();
                 }
             };
 
             const handleBroadcast = async () => {
-                if (broadcastMessage.trim() === '' || onlineUsers.length === 0) return;
+                if (broadcastMessage.trim() === '' || conversations.length === 0) return;
                 sfx.confirm();
                 const batch = writeBatch(db);
-                onlineUsers.forEach(user => {
-                    const messageRef = doc(collection(db, 'user_chats', user.uid, 'messages'));
+                conversations.forEach(conv => {
+                    const messageRef = doc(collection(db, 'user_chats', conv.id, 'messages'));
                     batch.set(messageRef, {
                         type: 'broadcast',
                         content: { text: broadcastMessage.trim() },
@@ -838,10 +934,18 @@
                         timestamp: serverTimestamp(),
                         reactions: {}
                     });
+                    const convRef = doc(db, 'user_chats', conv.id);
+                    batch.update(convRef, { lastUpdate: serverTimestamp(), isRead: false });
                 });
                 await batch.commit();
                 setBroadcastMessage('');
                 setShowBroadcastModal(false);
+            };
+            
+            const handleSendWarning = () => {
+                if (!warningInput.trim() || !currentChat) return;
+                handleSendMessage('warning', { text: warningInput.trim() });
+                setWarningInput(''); 
             };
 
             return (
@@ -875,7 +979,7 @@
                                                     <p className="text-xs text-slate-500">ID: {conv.id.slice(0, 8)}...</p>
                                                 </div>
                                             </div>
-                                            {conv.isRead === false && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>}
+                                            {conv.isRead === false && conv.id !== currentChat?.id && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>}
                                         </div>
                                     ))}
                                 </div>
@@ -888,33 +992,62 @@
                                             <h2 className="text-xl font-bold text-slate-800">Kênh: {currentChat.username}</h2>
                                         </header>
                                         <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                                            {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="admin" />)}
+                                            {messages.map(msg => 
+                                                <MessageRenderer 
+                                                    key={msg.id}
+                                                    msg={msg}
+                                                    currentUser={currentUser}
+                                                    viewType="admin"
+                                                    editingMsg={editingMsg}
+                                                    onStartEdit={handleStartEdit}
+                                                    onSaveEdit={handleSaveEdit}
+                                                    onCancelEdit={handleCancelEdit}
+                                                    onUpdateEditingText={(text) => setEditingMsg({...editingMsg, text})}
+                                                />
+                                            )}
                                             <div ref={messagesEndRef} />
                                         </main>
                                         <footer className="p-4 border-t border-[var(--border-color)] flex-shrink-0 bg-white space-y-3">
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-400 w-16">BÁO BÀN:</span>
+                                                    <span className="text-xs font-bold text-slate-400 w-20">BÁO BÀN:</span>
                                                     <select value={selectedTable} onChange={e => setSelectedTable(e.target.value)} className="form-input text-sm py-1 px-2 w-full">
                                                         {BACARAT_TABLES.map(table => <option key={table} value={table}>{table}</option>)}
                                                     </select>
+                                                    <button onClick={() => handleSendMessage('table_announcement', { table: selectedTable })} className="secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50">Xác Nhận</button>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                     <span className="text-xs font-bold text-slate-400 w-16">DỰ ĐOÁN:</span>
-                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Con', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50">Con</button>
-                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Cái', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Cái</button>
+                                                     <span className="text-xs font-bold text-slate-400 w-20">DỰ ĐOÁN:</span>
+                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Con', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50 font-bold">Con</button>
+                                                    <button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Cái', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50 font-bold">Cái</button>
                                                     <button onClick={() => handleSendMessage('prediction', { prediction: 'Hoà', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Hoà</button>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-400 w-16">PHẢN HỒI:</span>
+                                                    <span className="text-xs font-bold text-slate-400 w-20">PHẢN HỒI:</span>
                                                     <button onClick={() => handleSendMessage('result', { result: 'Thắng' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Thắng!</button>
                                                     <button onClick={() => handleSendMessage('result', { result: 'Thua' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Thua!</button>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-400 w-16">HỆ THỐNG:</span>
+                                                 <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-400 w-20">HỆ THỐNG:</span>
                                                     <button onClick={() => handleSendMessage('wait', { text: 'Xin vui lòng đợi trong giây lát.'})} className="flex-1 secondary-btn text-xs px-2 py-1">Đợi lát</button>
-                                                    <button onClick={() => handleSendMessage('warning', { text: 'Năng lượng của bạn sắp cạn kiệt.'})} className="flex-1 secondary-btn text-xs px-2 py-1 border-amber-500 text-amber-600 hover:bg-amber-50">Cảnh báo</button>
                                                 </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
+                                                <span className="text-xs font-bold text-slate-400 w-20">CẢNH BÁO:</span>
+                                                <input 
+                                                    type="text" 
+                                                    value={warningInput} 
+                                                    onChange={e => setWarningInput(e.target.value)} 
+                                                    placeholder="Nội dung cảnh báo tùy chỉnh..." 
+                                                    className="form-input text-sm py-1 px-2 w-full" 
+                                                />
+                                                <button 
+                                                    onClick={handleSendWarning} 
+                                                    disabled={!warningInput.trim()}
+                                                    className="secondary-btn text-xs px-4 py-2 border-amber-500 text-amber-600 hover:bg-amber-50"
+                                                >
+                                                    Gửi
+                                                </button>
                                             </div>
                                             <div className="flex items-center space-x-2 pt-3 border-t border-slate-200">
                                                 <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
@@ -924,7 +1057,6 @@
                                                 <input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
                                                 <button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button>
                                             </div>
-                                            {sendError && <p className="text-red-600 text-xs text-center mt-2">{sendError}</p>}
                                         </footer>
                                     </Fragment>
                                ) : (
@@ -939,7 +1071,7 @@
                     <AnimatedPresence isVisible={showBroadcastModal}>
                         <Modal onClose={() => setShowBroadcastModal(false)}>
                             <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Gửi Thông Báo Chung</h3>
-                            <p className="text-center text-sm text-slate-500 mb-4">Tin nhắn này sẽ được gửi đến tất cả {onlineUsers.length} người dùng đang trực tuyến.</p>
+                            <p className="text-center text-sm text-slate-500 mb-4">Tin nhắn này sẽ được gửi đến tất cả {conversations.length} người dùng.</p>
                             <textarea value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)} className="w-full h-32 p-3 form-input" placeholder="Nội dung thông báo..."></textarea>
                             <div className="flex justify-end space-x-4 mt-4">
                                 <button onClick={() => setShowBroadcastModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
