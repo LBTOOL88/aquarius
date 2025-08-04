@@ -38,13 +38,11 @@
             --border-color: rgba(30, 41, 59, 0.2);
         }
 
-        /* --- START: Cập nhật layout cho di động --- */
         html, body, #root {
             height: 100%;
             width: 100%;
             overflow: hidden;
         }
-        /* --- END: Cập nhật layout cho di động --- */
 
         body {
             font-family: 'Rajdhani', sans-serif;
@@ -127,13 +125,11 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--primary-color); border-radius: 10px; }
         
-        /* --- START: Cập nhật Animation --- */
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         .fade-in { animation: fadeIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
         
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .fade-out { animation: fadeOut 0.5s ease-out forwards; }
-        /* --- END: Cập nhật Animation --- */
 
         .pulse-announcement {
             animation: pulse-border 2s infinite;
@@ -163,6 +159,16 @@
         .flashing-danger-icon {
             animation: blink-danger-icon 1s step-end infinite;
         }
+
+        /* --- START: CSS cho công tắc --- */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: var(--success-color);
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: var(--success-color);
+        }
+        /* --- END: CSS cho công tắc --- */
     </style>
 </head>
 <body>
@@ -240,6 +246,7 @@
         
         const { useState, useEffect, useRef, Fragment } = React;
 
+        // --- START: Sửa lỗi cấu hình Firebase ---
         const firebaseConfig = {
             apiKey: "AIzaSyCHDzGbXmHNWKL2UtRm57vPRVxZb31dHto",
             authDomain: "long-bao-tool-ai.firebaseapp.com",
@@ -248,8 +255,10 @@
             messagingSenderId: "259613170671",
             appId: "1:259613170671:web:55291d0b0af4e69052b41a",
             measurementId: "G-7V7H3JWX7K",
-            databaseURL: "https://long-bao-tool-ai-default-rtdb.asia-southeast1.firebasedatabase.app"
+            databaseURL: "https://long-bao-tool-ai-default-rtdb.firebaseio.com" // Đã sửa lại URL
         };
+        // --- END: Sửa lỗi cấu hình Firebase ---
+
         const ADMIN_USERNAME = "admin";
         const DUMMY_DOMAIN = "@long-bao-tool-ai.web.app";
 
@@ -354,7 +363,6 @@
             );
         };
         
-        // --- START: Component Màn hình chờ ---
         const SplashScreen = () => (
             <div className="h-full w-full flex flex-col items-center justify-center bg-slate-100 fade-in">
                 <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4" style={{color: 'var(--primary-color)'}}>
@@ -366,7 +374,6 @@
                 <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono mt-2">SIÊU TRÍ TUỆ</p>
             </div>
         );
-        // --- END: Component Màn hình chờ ---
 
         const LoginScreen = () => {
             const [username, setUsername] = useState('');
@@ -423,6 +430,27 @@
             );
         };
         
+        const SystemStatusBanner = ({ status }) => {
+            if (!status || !status.message) return null; 
+
+            const isOnline = status.isOnline;
+            const bgColor = isOnline ? 'bg-green-100 border-green-500' : 'bg-slate-200 border-slate-400';
+            const textColor = isOnline ? 'text-green-800' : 'text-slate-700';
+            const iconColor = isOnline ? 'text-green-500' : 'text-slate-500';
+            const iconPath = isOnline 
+                ? "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                : "M11 7h2v6h-2zm0 8h2v2h-2zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z";
+
+            return (
+                <div className={`p-2 sm:p-3 border-b ${bgColor} flex items-center space-x-3 transition-all duration-300 flex-shrink-0`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 flex-shrink-0 ${iconColor}`} viewBox="0 0 24 24" fill="currentColor">
+                        <path d={iconPath}></path>
+                    </svg>
+                    <p className={`text-sm font-semibold ${textColor} truncate`}>{status.message}</p>
+                </div>
+            );
+        };
+
         const UserView = ({ currentUser, onLogout }) => {
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
@@ -437,10 +465,26 @@
             const [blessingCooldown, setBlessingCooldown] = useState("");
             const [isSending, setIsSending] = useState(false);
             const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+            const [systemStatus, setSystemStatus] = useState({ isOnline: true, message: '' });
             const messagesEndRef = useRef(null);
             const avatarInputRef = useRef(null);
+
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isAdminTyping]);
             useEffect(() => { if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } }, []);
+            
+            useEffect(() => {
+                const statusRef = ref(rtdb, 'system_status');
+                const unsub = onValue(statusRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setSystemStatus(data);
+                    } else {
+                        setSystemStatus({ isOnline: true, message: 'Hệ thống đang hoạt động bình thường.' });
+                    }
+                });
+                return () => unsub();
+            }, []);
+
             const useCooldownTimer = (lastTimestamp, setCooldownString) => {
                  useEffect(() => {
                      if (!userData || !lastTimestamp) { setCooldownString(""); return; }
@@ -565,12 +609,10 @@
                 const blessingMessages = messages.filter(msg => msg.type === 'blessing').sort((a, b) => b.timestamp - a.timestamp);
                 return (<Modal onClose={onClose} size="lg"><h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Lịch sử Ban Phước</h3><div className="max-h-[60vh] overflow-y-auto custom-scrollbar space-y-4 p-4 bg-slate-100 rounded-lg">{blessingMessages.length > 0 ? blessingMessages.map(msg => (<div key={msg.id} className="bg-white rounded-lg shadow-sm p-2"><MessageRenderer msg={msg} currentUser={currentUser} viewType="user" /><p className="text-xs text-right text-slate-400 pt-2">{new Date(msg.timestamp?.toDate()).toLocaleString()}</p></div>)) : <p className="text-center text-slate-500">Chưa có lịch sử.</p>}</div><div className="flex justify-end mt-4"><button onClick={onClose} className="primary-btn">Đóng</button></div></Modal>);
             };
-            const sendDisabled = isSending || ((userData?.messageCountToday || 0) >= 2 && userData.energy < 7);
+            const sendDisabled = isSending || ((userData?.messageCountToday || 0) >= 2 && userData.energy < 7) || !systemStatus.isOnline;
             return (
                 <Fragment>
-                    {/* --- START: Cập nhật layout cho di động --- */}
                     <div className="h-full w-full flex items-center justify-center p-2 sm:p-4">
-                    {/* --- END: Cập nhật layout cho di động --- */}
                         <div className="w-full h-full max-w-lg sm:max-w-2xl ui-frame flex flex-col overflow-hidden">
                             <header className="p-2 sm:p-4 flex-shrink-0 border-b border-[var(--border-color)]">
                                 <div className="flex justify-between items-center space-x-2">
@@ -591,6 +633,9 @@
                                     </div>
                                 </div>
                             </header>
+                            
+                            <SystemStatusBanner status={systemStatus} />
+
                             <main className="flex-1 p-2 sm:p-4 overflow-y-auto custom-scrollbar">
                                {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="user" onImageClick={setShowImageModal} />)}
                                {isAdminTyping && <TypingIndicator />}
@@ -599,7 +644,7 @@
                             <footer className="p-2 sm:p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-2">
                                 <div className="flex items-center space-x-2">
                                     <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn p-2 sm:px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>{blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}</button>
-                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input text-base" />
+                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder={systemStatus.isOnline ? "Gửi tín hiệu..." : "Hệ thống đang Offline"} className="w-full form-input text-base" disabled={!systemStatus.isOnline} />
                                     <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-4 sm:px-6">{isSending ? '...' : 'Gửi'}</button>
                                 </div>
                                 <div className="text-center text-xs font-tech-mono text-slate-500 h-4">{ (userData?.messageCountToday || 0) < 2 ? `Lượt gửi miễn phí còn lại: ${2 - (userData?.messageCountToday || 0)}` : `Mỗi lần gửi tốn 7 năng lượng` }</div>
@@ -627,8 +672,38 @@
             const [editingMsg, setEditingMsg] = useState({ id: null, text: '' });
             const [warningInput, setWarningInput] = useState('');
             const [emergencyInput, setEmergencyInput] = useState('');
+            const [systemStatus, setSystemStatus] = useState({ isOnline: true, message: '' });
             const messagesEndRef = useRef(null);
             const imageInputRef = useRef(null);
+
+            useEffect(() => {
+                const statusRef = ref(rtdb, 'system_status');
+                const unsub = onValue(statusRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setSystemStatus(data);
+                    } else {
+                        const defaultStatus = { isOnline: true, message: 'Hệ thống đang hoạt động bình thường.' };
+                        set(statusRef, defaultStatus);
+                        setSystemStatus(defaultStatus);
+                    }
+                });
+                return () => unsub();
+            }, []);
+
+            const handleSystemStatusToggle = () => {
+                const newStatus = !systemStatus.isOnline;
+                const statusRef = ref(rtdb, 'system_status');
+                update(statusRef, { isOnline: newStatus });
+            };
+
+            const handleStatusMessageChange = (e) => {
+                 const newMessage = e.target.value;
+                 setSystemStatus(prev => ({...prev, message: newMessage}));
+                 const statusRef = ref(rtdb, 'system_status');
+                 update(statusRef, { message: newMessage });
+            };
+
             useEffect(() => { const q = query(collection(db, 'user_chats'), orderBy('lastUpdate', 'desc')); const unsub = onSnapshot(q, snapshot => setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))); return () => unsub(); }, []);
             useEffect(() => { if (!currentChat) return; setEditingMsg({ id: null, text: '' }); const q = query(collection(db, 'user_chats', currentChat.id, 'messages'), orderBy('timestamp')); const unsub = onSnapshot(q, snapshot => setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))); updateDoc(doc(db, 'user_chats', currentChat.id), { isRead: true }); return () => unsub(); }, [currentChat]);
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -677,6 +752,27 @@
                         <div className="w-full h-full max-w-7xl ui-frame no-padding flex overflow-hidden">
                             <div className="w-1/3 border-r border-[var(--border-color)] flex flex-col">
                                 <header className="p-4 border-b border-[var(--border-color)] flex-shrink-0 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Bảng điều khiển</h2><button onClick={onLogout} className="secondary-btn px-3 py-1.5 text-sm">Đăng xuất</button></header>
+                                
+                                <div className="p-4 border-b border-[var(--border-color)] space-y-3">
+                                    <h3 className="font-orbitron font-bold text-slate-700">KIỂM SOÁT HỆ THỐNG</h3>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`font-semibold ${systemStatus.isOnline ? 'text-green-600' : 'text-slate-500'}`}>
+                                            {systemStatus.isOnline ? 'Trạng thái: ONLINE' : 'Trạng thái: OFFLINE'}
+                                        </span>
+                                        <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                            <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer" checked={systemStatus.isOnline} onChange={handleSystemStatusToggle}/>
+                                            <label htmlFor="toggle" className="toggle-label block overflow-hidden h-7 rounded-full bg-gray-300 cursor-pointer"></label>
+                                        </div>
+                                    </div>
+                                    <input 
+                                        type="text"
+                                        value={systemStatus.message}
+                                        onChange={handleStatusMessageChange}
+                                        placeholder="Nhập thông báo trạng thái..."
+                                        className="w-full form-input text-sm p-2"
+                                    />
+                                </div>
+
                                 <div className="p-4 border-b border-[var(--border-color)]"><h3 className="font-orbitron font-bold text-slate-700 mb-2">NGƯỜI DÙNG ONLINE ({onlineUsers.length})</h3><div className="max-h-32 overflow-y-auto custom-scrollbar space-y-2">{onlineUsers.map(user => (<div key={user.uid} className="flex items-center space-x-2 p-1 bg-slate-200/50 rounded-lg"><img src={user.avatarUrl} className="w-8 h-8 rounded-full" onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/32x32/e2e8f0/64748b?text=${(user.username || '?').charAt(0).toUpperCase()}`; }} /><span className="font-semibold text-sm text-slate-700">{user.username}</span></div>))}</div><button onClick={() => setShowBroadcastModal(true)} className="w-full primary-btn mt-3 text-sm py-2" style={{'--primary-color': 'var(--success-color)'}}>Gửi Thông Báo Chung</button></div>
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">{conversations.map(conv => (<div key={conv.id} onClick={() => setCurrentChat(conv)} className={`p-4 cursor-pointer border-b border-slate-200 flex justify-between items-center transition-colors duration-200 ${currentChat?.id === conv.id ? 'bg-blue-100' : 'hover:bg-slate-100'}`}><div className="flex items-center space-x-3"><img src={conv.avatarUrl} className="w-10 h-10 rounded-full" onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/40x40/e2e8f0/64748b?text=${(conv.username || '?').charAt(0).toUpperCase()}`; }} /><div><p className="font-semibold text-slate-800">{conv.username}</p><p className="text-xs text-slate-500">ID: {conv.id.slice(0, 8)}...</p></div></div>{conv.isRead === false && conv.id !== currentChat?.id && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>}</div>))}</div>
                             </div>
@@ -706,11 +802,8 @@
         const System = () => {
             const [currentUser, setCurrentUser] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
-            // --- START: Thêm state cho màn hình chờ ---
             const [isSplashVisible, setIsSplashVisible] = useState(true);
-            // --- END: Thêm state cho màn hình chờ ---
 
-            // --- START: Thêm useEffect để ẩn màn hình chờ sau 3 giây ---
             useEffect(() => {
                 const timer = setTimeout(() => {
                     setIsSplashVisible(false);
@@ -718,7 +811,6 @@
                 }, 3000);
                 return () => clearTimeout(timer);
             }, []);
-            // --- END: Thêm useEffect để ẩn màn hình chờ ---
 
             useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -751,10 +843,9 @@
                 signOut(auth).catch(error => { console.error("Lỗi khi đăng xuất:", error); });
             };
             
-            // --- START: Cập nhật logic render ---
             const renderContent = () => {
                 if (isLoading) {
-                    return null; // Không hiển thị gì trong khi đang tải, vì màn hình chờ đang che
+                    return null;
                 }
                 if (!currentUser) {
                     return <LoginScreen />;
@@ -776,7 +867,6 @@
                     </div>
                 </Fragment>
             );
-            // --- END: Cập nhật logic render ---
         };
 
         ReactDOM.createRoot(document.getElementById('root')).render(<System />);
