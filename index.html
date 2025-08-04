@@ -741,6 +741,7 @@
             const [showBroadcastModal, setShowBroadcastModal] = useState(false);
             const [broadcastMessage, setBroadcastMessage] = useState('');
             const [selectedTable, setSelectedTable] = useState(BACARAT_TABLES[0]);
+            const [sendError, setSendError] = useState('');
             const messagesEndRef = useRef(null);
             const imageInputRef = useRef(null);
 
@@ -749,13 +750,16 @@
                 const unsub = onSnapshot(q, snapshot => setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
                 return () => unsub();
             }, []);
+            
             useEffect(() => {
+                setSendError('');
                 if (!currentChat) return;
                 const q = query(collection(db, 'user_chats', currentChat.id, 'messages'), orderBy('timestamp'));
                 const unsub = onSnapshot(q, snapshot => setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
                 updateDoc(doc(db, 'user_chats', currentChat.id), { isRead: true });
                 return () => unsub();
             }, [currentChat]);
+
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
             
             useEffect(() => {
@@ -773,7 +777,9 @@
                 return () => unsub();
             }, []);
 
+            // FIX: Added setInputMessage to update the input field's state
             const handleTyping = (e) => {
+                setInputMessage(e.target.value); // This line was missing
                 if (!currentChat) return;
                 const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`);
                 set(typingRef, { isTyping: e.target.value.length > 0 });
@@ -782,6 +788,7 @@
             
             const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return;
+                setSendError('');
 
                 const textContent = inputMessage.trim();
                 if (type === 'text' && textContent === '') return;
@@ -810,6 +817,11 @@
                 } catch (error) {
                     console.error("Lỗi khi gửi tin nhắn:", error);
                     sfx.error();
+                    if (error.code === 'permission-denied') {
+                        setSendError('Lỗi: Không có quyền gửi tin nhắn cho người dùng này. Vui lòng kiểm tra lại quy tắc bảo mật Firestore.');
+                    } else {
+                        setSendError(`Lỗi không xác định: ${error.message}`);
+                    }
                 }
             };
 
@@ -912,6 +924,7 @@
                                                 <input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
                                                 <button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button>
                                             </div>
+                                            {sendError && <p className="text-red-600 text-xs text-center mt-2">{sendError}</p>}
                                         </footer>
                                     </Fragment>
                                ) : (
