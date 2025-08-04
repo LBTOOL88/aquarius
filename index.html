@@ -121,7 +121,9 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--primary-color); border-radius: 10px; }
         
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
+        .fade-out { animation: fadeOut 0.5s ease-out forwards; }
         
         .pulse-announcement {
             animation: pulse-border 2s infinite;
@@ -142,32 +144,28 @@
             animation: blink-warning 1.5s step-end infinite;
         }
 
-        /* Boot Screen Styles */
-        .boot-screen {
-            background-color: #020617; /* Slate 950 */
-            color: #4ade80; /* Green 400 */
-            text-shadow: 0 0 5px #4ade80;
+        /* Intro Screen Styles */
+        .intro-screen {
+            background-color: var(--bg-color);
         }
-        .boot-screen .scanline {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: #4ade80;
-            opacity: 0.1;
-            animation: scan 4s linear infinite;
+        .intro-logo {
+            width: 150px;
+            height: 150px;
         }
-        @keyframes scan {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(100vh); }
+        .intro-logo .logo-path {
+            stroke: var(--primary-color);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw-logo 2s ease-in-out forwards;
         }
-        @keyframes flicker {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-        }
-        .boot-screen pre {
-            animation: flicker 0.15s infinite;
+        @keyframes draw-logo {
+            to {
+                stroke-dashoffset: 0;
+            }
         }
     </style>
 </head>
@@ -493,7 +491,7 @@
                 <div className="min-h-screen flex items-center justify-center p-4">
                     <div className="w-full max-w-md ui-frame">
                         <div className="text-center mb-8">
-                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.7</h1>
+                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.8</h1>
                             <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono">SIÊU TRÍ TUỆ</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -1120,8 +1118,41 @@
             );
         };
 
+        const IntroScreen = ({ onBootComplete }) => {
+            const [isFadingOut, setIsFadingOut] = useState(false);
+
+            useEffect(() => {
+                const fadeTimer = setTimeout(() => {
+                    setIsFadingOut(true);
+                }, 2500); // Bắt đầu mờ dần sau 2.5 giây
+
+                const completeTimer = setTimeout(() => {
+                    onBootComplete();
+                }, 3000); // Hoàn thành sau 3 giây
+
+                Tone.start().then(() => {
+                    sfx.bootSequence.triggerAttackRelease("8n");
+                    setTimeout(() => sfx.bootComplete(), 2000);
+                });
+
+                return () => {
+                    clearTimeout(fadeTimer);
+                    clearTimeout(completeTimer);
+                };
+            }, [onBootComplete]);
+
+            return (
+                <div className={`fixed inset-0 flex items-center justify-center intro-screen z-50 transition-opacity duration-500 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+                    <svg className="intro-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <path className="logo-path" d="M 50 15 L 15 85 L 85 85 Z M 50 15 L 25 65 H 75 Z M 40 75 L 60 75" />
+                    </svg>
+                </div>
+            );
+        };
+
         const System = () => {
             const [currentUser, setCurrentUser] = useState(null);
+            const [isBooting, setIsBooting] = useState(true);
             const [isLoading, setIsLoading] = useState(true);
 
             useEffect(() => {
@@ -1156,8 +1187,17 @@
                     console.error("Lỗi khi đăng xuất:", error);
                 });
             };
+            
+            const handleBootComplete = () => {
+                setIsBooting(false);
+            };
+
+            if (isBooting) {
+                return <IntroScreen onBootComplete={handleBootComplete} />;
+            }
 
             if (isLoading) { return <div className="h-screen w-screen"></div>; }
+            
             const isAdmin = currentUser && currentUser.email.split('@')[0] === ADMIN_USERNAME;
 
             return (
