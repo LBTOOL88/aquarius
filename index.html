@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aquarius V - Upgraded</title>
+    <title>Aquarius V SIÊU TRÍ TUỆ/title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -64,7 +64,12 @@
             border: 1px solid var(--border-color);
             border-radius: 1.5rem;
             box-shadow: 0 10px 30px -15px rgba(0,0,0,0.1);
-            padding: 2rem;
+            padding: 1rem;
+        }
+        @media (min-width: 640px) {
+            .ui-frame {
+                padding: 2rem;
+            }
         }
         .ui-frame.no-padding { padding: 0; }
 
@@ -73,7 +78,7 @@
             border: 2px solid transparent;
             color: var(--text-color);
             transition: all 0.3s ease;
-            font-size: 1.1rem;
+            font-size: 1rem;
             padding: 0.75rem 1rem;
             border-radius: 0.75rem;
         }
@@ -209,7 +214,7 @@
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, orderBy, query, serverTimestamp, addDoc, updateDoc, writeBatch, getDocs, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getDatabase, ref, onValue, set, update, onDisconnect, serverTimestamp as rtdbServerTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         
         const { useState, useEffect, useRef, Fragment } = React;
 
@@ -304,7 +309,7 @@
                     case 'text':
                         return <p className="whitespace-pre-wrap">{msg.text}</p>;
                     case 'image':
-                        return <img src={msg.content?.url} alt="Hình ảnh" className="max-w-xs md:max-w-sm rounded-lg cursor-pointer" onClick={() => onImageClick && onImageClick(msg.content?.url)} onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/f87171/white?text=Lỗi+Ảnh'; }} />;
+                        return <img src={msg.content?.url} alt="Hình ảnh" className="max-w-[200px] sm:max-w-xs md:max-w-sm rounded-lg cursor-pointer" onClick={() => onImageClick && onImageClick(msg.content?.url)} onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/f87171/white?text=Lỗi+Ảnh'; }} />;
                     case 'warning':
                         return <div className="p-3 border-l-4 border-amber-500 bg-amber-50 rounded-r-lg flashing-warning"><p className="font-semibold text-amber-700">Cảnh Báo Hệ Thống</p><p className="text-slate-700">{msg.content?.text}</p></div>;
                     case 'wait':
@@ -382,7 +387,7 @@
             return (
                 <div className={`group flex flex-col my-2 ${alignment}`}>
                     <div className="max-w-lg relative">
-                       <div style={bubbleStyle} className="p-3">
+                       <div style={bubbleStyle} className="p-2 sm:p-3">
                            {renderContent()}
                        </div>
                        {viewType === 'admin' && msg.type === 'text' && !isEditingThisMessage && (
@@ -458,7 +463,7 @@
                 <div className="min-h-screen flex items-center justify-center p-4">
                     <div className="w-full max-w-md ui-frame">
                         <div className="text-center mb-8">
-                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V2.5</h1>
+                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V</h1>
                             <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono">SIÊU TRÍ TUỆ</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -716,15 +721,15 @@
 
             return (
                 <Fragment>
-                    <div className="h-screen w-screen flex items-center justify-center p-4">
-                        <div className="w-full h-full max-w-4xl ui-frame flex flex-col overflow-hidden">
-                            <header className="flex justify-between items-center p-4 flex-shrink-0 border-b border-[var(--border-color)] space-x-4">
-                                <div className="flex-1 flex items-center space-x-4">
+                    <div className="h-screen w-screen flex items-center justify-center p-2 sm:p-4">
+                        <div className="w-full h-full max-w-lg sm:max-w-2xl ui-frame flex flex-col overflow-hidden">
+                            <header className="flex justify-between items-center p-2 sm:p-4 flex-shrink-0 border-b border-[var(--border-color)] space-x-2 sm:space-x-4">
+                                <div className="flex-1 flex items-center space-x-2 sm:space-x-4">
                                     <div className="relative group">
                                         <img 
                                             src={userData.avatarUrl} 
                                             alt="Avatar" 
-                                            className="w-16 h-16 rounded-full border-2 border-white shadow-md cursor-pointer"
+                                            className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-white shadow-md cursor-pointer"
                                             onClick={() => avatarInputRef.current.click()}
                                             onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/96x96/e2e8f0/64748b?text=${userData.username.charAt(0).toUpperCase()}`; }}
                                         />
@@ -737,29 +742,29 @@
                                         </div>
                                     </div>
                                     <div className="flex-1">
-                                        <h2 className="text-xl font-bold text-slate-800">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
+                                        <h2 className="text-lg sm:text-xl font-bold text-slate-800">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
                                         <EnergyBar current={userData.energy} max={MAX_ENERGY} />
                                     </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => setShowHistoryModal(true)} className="secondary-btn px-4 py-2 text-sm">Lịch sử</button>
-                                    <button onClick={onLogout} className="secondary-btn px-4 py-2">Ngắt kết nối</button>
+                                <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                                    <button onClick={() => setShowHistoryModal(true)} className="secondary-btn px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm">Lịch sử</button>
+                                    <button onClick={onLogout} className="secondary-btn px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm">Ngắt kết nối</button>
                                 </div>
                             </header>
                             
-                            <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                            <main className="flex-1 p-2 sm:p-4 overflow-y-auto custom-scrollbar">
                                {messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="user" onImageClick={setShowImageModal} />)}
                                {isAdminTyping && <TypingIndicator />}
                                <div ref={messagesEndRef} />
                             </main>
 
-                            <footer className="p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-2">
-                                <div className="flex items-center space-x-4">
-                                    <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>
+                            <footer className="p-2 sm:p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn p-2 sm:px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>
                                         {blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}
                                     </button>
-                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input" />
-                                    <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-6">
+                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder="Gửi tín hiệu..." className="w-full form-input text-base" />
+                                    <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-4 sm:px-6">
                                         {isSending ? '...' : 'Gửi'}
                                     </button>
                                 </div>
@@ -833,7 +838,7 @@
                 set(typingRef, { isTyping: e.target.value.length > 0 });
             };
 
-            const handleImageUpload = (event) => {
+            const handleImageUpload = async (event) => {
                 if (!currentChat) return;
                 const file = event.target.files[0];
                 if (!file) return;
@@ -841,22 +846,24 @@
                 setUploadingImage(true);
                 const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`;
                 const fileRef = storageRef(storage, filePath);
-                const uploadTask = uploadBytesResumable(fileRef, file);
-
-                uploadTask.on('state_changed',
-                    null,
-                    (error) => {
-                        console.error("Image upload error:", error);
-                        sfx.error();
-                        setUploadingImage(false);
-                    },
-                    () => {
-                        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-                            await handleSendMessage('image', { url: downloadURL });
-                            setUploadingImage(false);
-                        });
+                
+                try {
+                    // 1. Upload the file
+                    const snapshot = await uploadBytes(fileRef, file);
+                    // 2. Get the download URL
+                    const downloadURL = await getDownloadURL(snapshot.ref);
+                    // 3. Send the message with the URL
+                    await handleSendMessage('image', { url: downloadURL });
+                } catch (error) {
+                    console.error("Lỗi tải lên hình ảnh:", error);
+                    sfx.error();
+                } finally {
+                    // 4. Always stop the spinner and reset input
+                    setUploadingImage(false);
+                    if (imageInputRef.current) {
+                        imageInputRef.current.value = "";
                     }
-                );
+                }
             };
             
             const handleSendMessage = async (type = 'text', content = null) => {
