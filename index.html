@@ -246,7 +246,6 @@
         
         const { useState, useEffect, useRef, Fragment } = React;
 
-        // --- START: Sửa lỗi cấu hình Firebase ---
         const firebaseConfig = {
             apiKey: "AIzaSyCHDzGbXmHNWKL2UtRm57vPRVxZb31dHto",
             authDomain: "long-bao-tool-ai.firebaseapp.com",
@@ -255,9 +254,8 @@
             messagingSenderId: "259613170671",
             appId: "1:259613170671:web:55291d0b0af4e69052b41a",
             measurementId: "G-7V7H3JWX7K",
-            databaseURL: "https://long-bao-tool-ai-default-rtdb.firebaseio.com" // Đã sửa lại URL
+            databaseURL: "https://long-bao-tool-ai-default-rtdb.firebaseio.com"
         };
-        // --- END: Sửa lỗi cấu hình Firebase ---
 
         const ADMIN_USERNAME = "admin";
         const DUMMY_DOMAIN = "@long-bao-tool-ai.web.app";
@@ -716,16 +714,44 @@
                 catch (error) { console.error("Lỗi tải lên hình ảnh:", error); sfx.error(); } 
                 finally { setUploadingImage(false); if (imageInputRef.current) { imageInputRef.current.value = ""; } }
             };
+            
             const handleSendMessage = async (type = 'text', content = null) => {
-                if (!currentChat) return; const textContent = inputMessage.trim(); if (type === 'text' && textContent === '') return;
+                if (!currentChat) return;
+                const textContent = inputMessage.trim();
+                if (type === 'text' && textContent === '') return;
+
                 try {
-                    sfx.confirm(); let messageData = { senderId: currentUser.uid, timestamp: serverTimestamp(), reactions: {} };
-                    if (type === 'text') { messageData.type = 'text'; messageData.text = textContent; } else { messageData.type = type; messageData.content = content; }
-                    await addDoc(collection(db, 'user_chats', currentChat.id, 'messages'), messageData);
-                    await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: true });
-                    if (type === 'text') { setInputMessage(''); const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`); set(typingRef, { isTyping: false }); }
-                } catch (error) { console.error("Lỗi khi gửi tin nhắn:", error); sfx.error(); }
+                    sfx.confirm();
+                    let messageData = {
+                        senderId: currentUser.uid,
+                        timestamp: serverTimestamp(),
+                        reactions: {}
+                    };
+
+                    if (type === 'text') {
+                        messageData.type = 'text';
+                        messageData.text = textContent;
+                    } else {
+                        messageData.type = type;
+                        messageData.content = content;
+                    }
+
+                    const addMessagePromise = addDoc(collection(db, 'user_chats', currentChat.id, 'messages'), messageData);
+                    const updateConversationPromise = updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: true });
+
+                    await Promise.all([addMessagePromise, updateConversationPromise]);
+
+                    if (type === 'text') {
+                        setInputMessage('');
+                        const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`);
+                        set(typingRef, { isTyping: false });
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi gửi tin nhắn:", error);
+                    sfx.error();
+                }
             };
+
             const handleStartEdit = (msg) => { setEditingMsg({ id: msg.id, text: msg.text || '' }); };
             const handleCancelEdit = () => { setEditingMsg({ id: null, text: '' }); };
             const handleSaveEdit = async () => {
