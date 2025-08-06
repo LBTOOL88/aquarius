@@ -339,6 +339,7 @@
                     case 'blessing': return (<div className="p-4 border-2 border-pink-400 bg-pink-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'rgba(219, 39, 119, 0.5)'}}><h4 className="text-xl font-bold text-pink-500 uppercase tracking-widest">BAN PHƯỚC</h4><p className="text-lg font-semibold text-slate-700">{msg.content?.plea}</p><p className="text-2xl font-bold text-pink-600 font-orbitron">{msg.content?.blessing}</p><p className="text-sm text-slate-500">Năng lượng đã được cộng thêm.</p></div>);
                     case 'blessing_request': return (<div className="p-3 border-l-4 border-pink-400 bg-pink-50 rounded-r-lg"><p className="font-semibold text-pink-700">Gửi lời thỉnh cầu:</p><p className="text-slate-700 italic">"{msg.content?.plea}"</p></div>);
                     case 'info_submission': return (<div className="p-3 border-l-4 border-slate-400 bg-slate-100 rounded-r-lg"><p className="font-semibold text-slate-700">Hệ thống ghi nhận:</p><p className="text-slate-600">{msg.content?.text}</p></div>);
+                    case 'style_selection': return (<div className="p-3 border-l-4 border-violet-500 bg-violet-50 rounded-r-lg"><p className="font-semibold text-violet-700">Phong cách đã chọn:</p><p className="font-bold text-slate-700">{msg.content?.style}</p></div>);
                     default: return null;
                 }
             };
@@ -480,6 +481,10 @@
             const [blessingCooldown, setBlessingCooldown] = useState("");
             const [isSending, setIsSending] = useState(false);
             const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+            // Thêm modal lựa chọn phong cách đánh và danh sách tùy chọn
+            const [showStyleModal, setShowStyleModal] = useState(false);
+            const STYLE_OPTIONS = ['TÍNH NĂNG CẨN THẬN','TỐC CHIẾN TỐC THẮNG','BẢO TOÀN VỐN','ĐÁNH NHỎ','ĐÁNH TỰ TIN','ALL IN KHÔNG CÒN GÌ ĐỂ MẤT','TỰ ĐỘNG'];
+            const [selectedStyle, setSelectedStyle] = useState(STYLE_OPTIONS[0]);
             const [systemStatus, setSystemStatus] = useState({ isOnline: true, message: '' });
             const messagesEndRef = useRef(null);
             const avatarInputRef = useRef(null);
@@ -600,6 +605,35 @@
                 await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'info_submission', content: { text: `Báo cáo đã được gửi: TK F168(${infoFormData.f168Account}), Vốn(${infoFormData.capital}), Mục tiêu(${infoFormData.target})` }, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp(), reactions: {} });
                 setShowInfoModal(false);
             };
+
+            // Xử lý xác nhận phong cách đánh
+            const handleConfirmStyle = async () => {
+                if (!selectedStyle) return;
+                sfx.confirm();
+                try {
+                    // Thêm tin nhắn lựa chọn phong cách vào subcollection messages
+                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), {
+                        type: 'style_selection',
+                        content: { style: selectedStyle },
+                        senderId: currentUser.uid,
+                        timestamp: serverTimestamp(),
+                        reactions: {}
+                    });
+                    // Cập nhật thông tin kênh chat để admin nhận được thông báo và sắp xếp theo thời gian
+                    const username = currentUser.email.split('@')[0];
+                    await setDoc(doc(db, 'user_chats', currentUser.uid), {
+                        lastUpdate: serverTimestamp(),
+                        username: username,
+                        userId: currentUser.uid,
+                        isRead: false,
+                        avatarUrl: (userData?.avatarUrl) || `https://placehold.co/96x96/e2e8f0/64748b?text=${username.charAt(0).toUpperCase()}`
+                    }, { merge: true });
+                    setShowStyleModal(false);
+                } catch (error) {
+                    console.error("Lỗi gửi lựa chọn phong cách:", error);
+                    sfx.error();
+                }
+            };
             const handleAvatarUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -659,6 +693,7 @@
                             <footer className="p-2 sm:p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-2">
                                 <div className="flex items-center space-x-2">
                                     <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn p-2 sm:px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>{blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}</button>
+                                    <button onClick={() => setShowStyleModal(true)} className="secondary-btn p-2 sm:px-4 text-xs whitespace-nowrap">Phong cách</button>
                                     <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder={systemStatus.isOnline ? "Gửi tín hiệu..." : "Hệ thống đang Offline"} className="w-full form-input text-base" disabled={!systemStatus.isOnline} />
                                     <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-4 sm:px-6">{isSending ? '...' : 'Gửi'}</button>
                                 </div>
@@ -670,6 +705,27 @@
                     <AnimatedPresence isVisible={showInfoModal}><Modal onClose={() => {}}><h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Yêu Cầu Khai Báo</h3><div className="space-y-4"><input value={infoFormData.f168Account} onChange={e => setInfoFormData({...infoFormData, f168Account: e.target.value})} type="text" placeholder="Tên TK F168" className="w-full form-input" /><input value={infoFormData.capital} onChange={e => setInfoFormData({...infoFormData, capital: e.target.value})} type="text" placeholder="Số vốn" className="w-full form-input" /><input value={infoFormData.target} onChange={e => setInfoFormData({...infoFormData, target: e.target.value})} type="text" placeholder="Muốn lên bao nhiêu" className="w-full form-input" /></div><div className="flex justify-end mt-6"><button onClick={handleInfoSubmit} className="primary-btn w-full">Gửi Báo Cáo</button></div></Modal></AnimatedPresence>
                     <AnimatedPresence isVisible={showImageModal}><Modal onClose={() => setShowImageModal(null)} size="3xl"><img src={showImageModal} className="w-full h-auto max-h-[80vh] object-contain rounded-lg"/><div className="text-center mt-4"><button onClick={() => setShowImageModal(null)} className="primary-btn">Đóng</button></div></Modal></AnimatedPresence>
                     <AnimatedPresence isVisible={showHistoryModal}><BlessingHistoryModal messages={messages} onClose={() => setShowHistoryModal(false)} currentUser={currentUser} /></AnimatedPresence>
+                    {/* Modal lựa chọn phong cách đánh */}
+                    <AnimatedPresence isVisible={showStyleModal}>
+                        <Modal onClose={() => setShowStyleModal(false)}>
+                            <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Lựa chọn phong cách đánh</h3>
+                            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                                {STYLE_OPTIONS.map(option => (
+                                    <button
+                                        key={option}
+                                        onClick={() => setSelectedStyle(option)}
+                                        className={`w-full py-2 rounded-md font-semibold ${selectedStyle === option ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+                                    >
+                                        {option}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex justify-end space-x-4 mt-4">
+                                <button onClick={() => setShowStyleModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
+                                <button onClick={handleConfirmStyle} className="primary-btn px-4 py-2">Xác nhận</button>
+                            </div>
+                        </Modal>
+                    </AnimatedPresence>
                 </Fragment>
             );
         };
@@ -680,6 +736,9 @@
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
             const [uploadingImage, setUploadingImage] = useState(false);
+            // Thêm trạng thái theo dõi tiến trình và lỗi cho việc tải ảnh
+            const [uploadProgress, setUploadProgress] = useState(0);
+            const [uploadError, setUploadError] = useState('');
             const [onlineUsers, setOnlineUsers] = useState([]);
             const [showBroadcastModal, setShowBroadcastModal] = useState(false);
             const [broadcastMessage, setBroadcastMessage] = useState('');
@@ -725,11 +784,42 @@
             useEffect(() => { const statusRef = ref(rtdb, 'status'); const unsub = onValue(statusRef, (snapshot) => { const users = []; snapshot.forEach((childSnapshot) => { const user = childSnapshot.val(); if (user.isOnline) { users.push({ uid: childSnapshot.key, ...user }); } }); setOnlineUsers(users); }); return () => unsub(); }, []);
             const handleTyping = (e) => { setInputMessage(e.target.value); if (!currentChat) return; const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`); set(typingRef, { isTyping: e.target.value.length > 0 }); };
             const handleImageUpload = async (event) => {
-                if (!currentChat) return; const file = event.target.files[0]; if (!file) return; setUploadingImage(true);
-                const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`; const fileRef = storageRef(storage, filePath);
-                try { const snapshot = await uploadBytes(fileRef, file); const downloadURL = await getDownloadURL(snapshot.ref); await handleSendMessage('image', { url: downloadURL }); } 
-                catch (error) { console.error("Lỗi tải lên hình ảnh:", error); sfx.error(); } 
-                finally { setUploadingImage(false); if (imageInputRef.current) { imageInputRef.current.value = ""; } }
+                // Nâng cấp quá trình gửi ảnh với theo dõi tiến độ và xử lý lỗi
+                if (!currentChat) return;
+                const file = event.target.files[0];
+                if (!file) return;
+                setUploadingImage(true);
+                setUploadError('');
+                const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`;
+                const fileRef = storageRef(storage, filePath);
+                try {
+                    const uploadTask = uploadBytesResumable(fileRef, file);
+                    uploadTask.on('state_changed', (snapshot) => {
+                        // Cập nhật % tiến độ
+                        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                        setUploadProgress(progress);
+                    }, (error) => {
+                        // Bắt lỗi và hiển thị
+                        console.error("Lỗi tải lên hình ảnh:", error);
+                        sfx.error();
+                        setUploadError('Lỗi tải lên hình ảnh');
+                        setUploadingImage(false);
+                    }, async () => {
+                        // Khi tải xong thành công, gửi tin nhắn ảnh cho người dùng
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        await handleSendMessage('image', { url: downloadURL });
+                        setUploadingImage(false);
+                        setUploadProgress(0);
+                        if (imageInputRef.current) {
+                            imageInputRef.current.value = "";
+                        }
+                    });
+                } catch (error) {
+                    console.error("Lỗi tải lên hình ảnh:", error);
+                    sfx.error();
+                    setUploadError('Lỗi tải lên hình ảnh');
+                    setUploadingImage(false);
+                }
             };
             const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return; const textContent = inputMessage.trim(); if (type === 'text' && textContent === '') return;
@@ -800,7 +890,29 @@
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">BÁO BÀN:</span><select value={selectedTable} onChange={e => setSelectedTable(e.target.value)} className="form-input text-sm py-1 px-2 w-full">{BACARAT_TABLES.map(table => <option key={table} value={table}>{table}</option>)}</select><button onClick={() => handleSendMessage('table_announcement', { table: selectedTable })} className="secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50">Xác Nhận</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">DỰ ĐOÁN:</span><button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Con', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50 font-bold">Con</button><button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Cái', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50 font-bold">Cái</button><button onClick={() => handleSendMessage('prediction', { prediction: 'Hoà', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Hoà</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">PHẢN HỒI:</span><button onClick={() => handleSendMessage('result', { result: 'Thắng' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Thắng!</button><button onClick={() => handleSendMessage('result', { result: 'Thua' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Thua!</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">HỆ THỐNG:</span><button onClick={() => handleSendMessage('wait', { text: 'Xin vui lòng đợi trong giây lát.'})} className="flex-1 secondary-btn text-xs px-2 py-1">Đợi lát</button></div></div>
                                             <div className="flex items-center gap-2 pt-3 border-t border-slate-200"><span className="text-xs font-bold text-slate-400 w-20">CẢNH BÁO:</span><input type="text" value={warningInput} onChange={e => setWarningInput(e.target.value)} placeholder="Nội dung cảnh báo tùy chỉnh..." className="form-input text-sm py-1 px-2 w-full" /><button onClick={handleSendWarning} disabled={!warningInput.trim()} className="secondary-btn text-xs px-4 py-2 border-amber-500 text-amber-600 hover:bg-amber-50">Gửi</button></div>
                                             <div className="flex items-center gap-2 pt-3 border-t border-red-200"><span className="text-xs font-bold text-red-600 w-20">TIN KHẨN:</span><input type="text" value={emergencyInput} onChange={e => setEmergencyInput(e.target.value)} placeholder="Nội dung khẩn cấp..." className="form-input text-sm py-1 px-2 w-full focus:border-red-500" /><button onClick={handleSendEmergency} disabled={!emergencyInput.trim()} className="primary-btn text-xs px-4 py-2" style={{'--primary-color': 'var(--danger-color)'}}>GỬI KHẨN</button></div>
-                                            <div className="flex items-center space-x-2 pt-3 border-t border-slate-200"><input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} /><button onClick={() => imageInputRef.current.click()} disabled={uploadingImage} className="secondary-btn p-2.5">{uploadingImage ? <svg className="animate-spin h-5 w-5 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}</button><input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" /><button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button></div>
+                                            <div className="flex items-center space-x-2 pt-3 border-t border-slate-200">
+                                                <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
+                                                <button onClick={() => imageInputRef.current.click()} disabled={uploadingImage} className="secondary-btn p-2.5">
+                                                    {uploadingImage ? (
+                                                        <svg className="animate-spin h-5 w-5 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                    ) : (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                                <input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
+                                                <button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button>
+                                            </div>
+                                            {uploadingImage && (
+                                                <div className="mt-1 text-xs text-slate-600">Đang tải hình ảnh: {uploadProgress}%</div>
+                                            )}
+                                            {uploadError && (
+                                                <div className="mt-1 text-xs text-red-600">{uploadError}</div>
+                                            )}
                                         </footer>
                                     </Fragment>
                                ) : (
