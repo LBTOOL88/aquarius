@@ -323,7 +323,53 @@
                     );
                 }
                 switch (msg.type) {
-                    case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
+                    case 'future_request':
+                        return (
+                            <div className="p-3 rounded-lg bg-blue-50 border border-blue-300">
+                                <p className="text-xs uppercase tracking-wider text-blue-500 font-semibold">CẦU TƯƠNG LAI</p>
+                                <p className="text-slate-800">
+                                    Sảnh: <span className="font-bold">{msg.content?.lobby}</span>
+                                    {'  '}|{'  '}
+                                    Bàn: <span className="font-bold">{msg.content?.tableName}</span>
+                                </p>
+                                {msg.content?.note && (
+                                  <p className="text-slate-600 text-sm mt-1">Ghi chú: {msg.content.note}</p>
+                                )}
+                            </div>
+                        );
+                    case 'future_grid':
+                        const raw = msg.content?.grid;
+                        let rows = 0, cols = 0, cells = [];
+                        if (Array.isArray(raw)) { // legacy nested arrays (not used anymore)
+                          rows = raw.length; cols = raw[0]?.length || 0; cells = raw.flat();
+                        } else if (raw && Array.isArray(raw.cells)) {
+                          rows = raw.rows || 0; cols = raw.cols || 0; cells = raw.cells;
+                        }
+                        return (
+                          <div className="inline-block p-2 rounded-lg border bg-white">
+                            <p className="text-xs text-slate-500 mb-2">
+                              Sảnh: <span className="font-semibold">{msg.content?.lobby}</span>
+                              {' '}| Bàn: <span className="font-semibold">{msg.content?.tableName}</span>
+                            </p>
+                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 18px)`, gap: '2px' }}>
+                              {Array.from({length: rows}).flatMap((_, r) =>
+                                Array.from({length: cols}).map((_, c) => {
+                                  const cell = cells[r*cols + c];
+                                  return (
+                                    <div key={`${r}-${c}`}
+                                         style={{ width: '18px', height: '18px', border: '1px solid #e5e7eb',
+                                                  borderRadius: '9999px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                  backgroundColor: cell === 'P' ? '#2563eb' : (cell === 'B' ? '#dc2626' : 'white'),
+                                                  color: (cell === 'P' || cell === 'B') ? 'white' : 'transparent', fontSize: '10px', fontWeight: 700 }}>
+                                      {cell === 'P' ? 'P' : (cell === 'B' ? 'B' : '')}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        );
+case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                     case 'image': return <img src={msg.content?.url} alt="Hình ảnh" className="max-w-[200px] sm:max-w-xs md:max-w-sm rounded-lg cursor-pointer" onClick={() => onImageClick && onImageClick(msg.content?.url)} onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/f87171/white?text=Lỗi+Ảnh'; }} />;
                     case 'warning': return <div className="p-3 border-l-4 border-amber-500 bg-amber-50 rounded-r-lg flashing-warning"><p className="font-semibold text-amber-700">Cảnh Báo Hệ Thống</p><p className="text-slate-700">{msg.content?.text}</p></div>;
                     case 'wait': return <div className="p-3 border-l-4 border-sky-500 bg-sky-50 rounded-r-lg"><p className="text-slate-700">{msg.content?.text}</p></div>;
@@ -339,7 +385,6 @@
                     case 'blessing': return (<div className="p-4 border-2 border-pink-400 bg-pink-50 rounded-lg text-center space-y-2 pulse-announcement" style={{'--glow-color': 'rgba(219, 39, 119, 0.5)'}}><h4 className="text-xl font-bold text-pink-500 uppercase tracking-widest">BAN PHƯỚC</h4><p className="text-lg font-semibold text-slate-700">{msg.content?.plea}</p><p className="text-2xl font-bold text-pink-600 font-orbitron">{msg.content?.blessing}</p><p className="text-sm text-slate-500">Năng lượng đã được cộng thêm.</p></div>);
                     case 'blessing_request': return (<div className="p-3 border-l-4 border-pink-400 bg-pink-50 rounded-r-lg"><p className="font-semibold text-pink-700">Gửi lời thỉnh cầu:</p><p className="text-slate-700 italic">"{msg.content?.plea}"</p></div>);
                     case 'info_submission': return (<div className="p-3 border-l-4 border-slate-400 bg-slate-100 rounded-r-lg"><p className="font-semibold text-slate-700">Hệ thống ghi nhận:</p><p className="text-slate-600">{msg.content?.text}</p></div>);
-                    case 'style_selection': return (<div className="p-3 border-l-4 border-violet-500 bg-violet-50 rounded-r-lg"><p className="font-semibold text-violet-700">Phong cách đã chọn:</p><p className="font-bold text-slate-700">{msg.content?.style}</p></div>);
                     default: return null;
                 }
             };
@@ -475,16 +520,17 @@
             const [showHistoryModal, setShowHistoryModal] = useState(false);
             const [showInfoModal, setShowInfoModal] = useState(false);
             const [showImageModal, setShowImageModal] = useState(null);
+            // === FUTURE PREDICTION – STATE ===
+            const [showFutureModal, setShowFutureModal] = useState(false);
+            const [futureForm, setFutureForm] = useState({ lobby: 'DG', tableName: '', note: '' });
+            const [sendingFuture, setSendingFuture] = useState(false);
+    
             const [plea, setPlea] = useState('');
             const [infoFormData, setInfoFormData] = useState({ f168Account: '', capital: '', target: '' });
             const [isAdminTyping, setIsAdminTyping] = useState(false);
             const [blessingCooldown, setBlessingCooldown] = useState("");
             const [isSending, setIsSending] = useState(false);
             const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-            // Thêm modal lựa chọn phong cách đánh và danh sách tùy chọn
-            const [showStyleModal, setShowStyleModal] = useState(false);
-            const STYLE_OPTIONS = ['TÍNH NĂNG CẨN THẬN','TỐC CHIẾN TỐC THẮNG','BẢO TOÀN VỐN','ĐÁNH NHỎ','ĐÁNH TỰ TIN','ALL IN KHÔNG CÒN GÌ ĐỂ MẤT','TỰ ĐỘNG'];
-            const [selectedStyle, setSelectedStyle] = useState(STYLE_OPTIONS[0]);
             const [systemStatus, setSystemStatus] = useState({ isOnline: true, message: '' });
             const messagesEndRef = useRef(null);
             const avatarInputRef = useRef(null);
@@ -597,6 +643,32 @@
                 await updateDoc(userDocRef, { lastBlessingTimestamp: serverTimestamp() });
                 setShowBlessingModal(false); setPlea('');
             };
+            // === FUTURE PREDICTION – HANDLER ===
+            const handleSendFuture = async () => {
+                if (!userData || (userData.energy ?? 0) < 50) { sfx.error(); await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'warning', content: { text: 'Không đủ năng lượng (cần 50) để dùng Cầu Tương Lai.' }, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp(), reactions: {} }); return; }
+                if (!futureForm.tableName.trim()) { sfx.error(); return; }
+                try {
+                    setSendingFuture(true);
+                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), {
+                        type: 'future_request',
+                        content: {
+                            lobby: futureForm.lobby,
+                            tableName: futureForm.tableName.trim(),
+                            note: futureForm.note?.trim() || null
+                        },
+                        senderId: currentUser.uid,
+                        timestamp: serverTimestamp(),
+                        reactions: {}
+                    });
+                    sfx.confirm();
+                    // trừ 50 năng lượng
+                    await updateDoc(doc(db, 'users', currentUser.uid), { energy: increment(-50) });
+                    setShowFutureModal(false);
+                    setFutureForm({ lobby: 'DG', tableName: '', note: '' });
+                } catch (error) { console.error(error); sfx.error(); }
+                finally { setSendingFuture(false); }
+            };
+        
             const handleInfoSubmit = async () => {
                 if (!infoFormData.f168Account || !infoFormData.capital || !infoFormData.target) { sfx.error(); return; }
                 sfx.confirm();
@@ -604,35 +676,6 @@
                 await updateDoc(userDocRef, { ...infoFormData, hasSubmittedInfo: true });
                 await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), { type: 'info_submission', content: { text: `Báo cáo đã được gửi: TK F168(${infoFormData.f168Account}), Vốn(${infoFormData.capital}), Mục tiêu(${infoFormData.target})` }, senderId: 'AQUARIUS_SYSTEM', timestamp: serverTimestamp(), reactions: {} });
                 setShowInfoModal(false);
-            };
-
-            // Xử lý xác nhận phong cách đánh
-            const handleConfirmStyle = async () => {
-                if (!selectedStyle) return;
-                sfx.confirm();
-                try {
-                    // Thêm tin nhắn lựa chọn phong cách vào subcollection messages
-                    await addDoc(collection(db, 'user_chats', currentUser.uid, 'messages'), {
-                        type: 'style_selection',
-                        content: { style: selectedStyle },
-                        senderId: currentUser.uid,
-                        timestamp: serverTimestamp(),
-                        reactions: {}
-                    });
-                    // Cập nhật thông tin kênh chat để admin nhận được thông báo và sắp xếp theo thời gian
-                    const username = currentUser.email.split('@')[0];
-                    await setDoc(doc(db, 'user_chats', currentUser.uid), {
-                        lastUpdate: serverTimestamp(),
-                        username: username,
-                        userId: currentUser.uid,
-                        isRead: false,
-                        avatarUrl: (userData?.avatarUrl) || `https://placehold.co/96x96/e2e8f0/64748b?text=${username.charAt(0).toUpperCase()}`
-                    }, { merge: true });
-                    setShowStyleModal(false);
-                } catch (error) {
-                    console.error("Lỗi gửi lựa chọn phong cách:", error);
-                    sfx.error();
-                }
             };
             const handleAvatarUpload = (e) => {
                 const file = e.target.files[0];
@@ -693,7 +736,7 @@
                             <footer className="p-2 sm:p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-2">
                                 <div className="flex items-center space-x-2">
                                     <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn p-2 sm:px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>{blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}</button>
-                                    <button onClick={() => setShowStyleModal(true)} className="secondary-btn p-2 sm:px-4 text-xs whitespace-nowrap">Phong cách</button>
+                                    <button onClick={() => setShowFutureModal(true)} className="secondary-btn p-2 sm:px-4">Cầu tương lai</button>
                                     <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder={systemStatus.isOnline ? "Gửi tín hiệu..." : "Hệ thống đang Offline"} className="w-full form-input text-base" disabled={!systemStatus.isOnline} />
                                     <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-4 sm:px-6">{isSending ? '...' : 'Gửi'}</button>
                                 </div>
@@ -702,30 +745,53 @@
                         </div>
                     </div>
                     <AnimatedPresence isVisible={showBlessingModal}><Modal onClose={() => setShowBlessingModal(false)}><h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Thỉnh Cầu Ban Phước</h3><p className="text-center text-sm text-slate-500 mb-4">Chức năng này được dùng 1 lần mỗi 24 giờ và không tốn năng lượng.</p><textarea value={plea} onChange={e => setPlea(e.target.value)} className="w-full h-24 p-3 form-input" placeholder="Viết lời thỉnh cầu của bạn..."></textarea><div className="flex justify-end space-x-4 mt-4"><button onClick={() => setShowBlessingModal(false)} className="secondary-btn px-4 py-2">Hủy</button><button onClick={handleBlessingRequest} disabled={!plea.trim() || !!blessingCooldown} className="primary-btn px-4 py-2">Gửi</button></div></Modal></AnimatedPresence>
+                    {/* FUTURE MODAL */}
+                    <AnimatedPresence isVisible={showFutureModal}>
+                      <Modal onClose={() => setShowFutureModal(false)}>
+                        <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Cầu Tương Lai</h3><p className="text-center text-xs text-slate-500 mb-3">Mỗi lần dùng tốn <span className='font-semibold text-red-600'>50 năng lượng</span>.</p>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-semibold mb-1 text-slate-600">Chọn sảnh</label>
+                            <select
+                              value={futureForm.lobby}
+                              onChange={e => setFutureForm(f => ({ ...f, lobby: e.target.value }))}
+                              className="form-input w-full"
+                            >
+                              <option value="DG">DG</option>
+                              <option value="SEXY">SEXY</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold mb-1 text-slate-600">Tên bàn</label>
+                            <input
+                              value={futureForm.tableName}
+                              onChange={e => setFutureForm(f => ({ ...f, tableName: e.target.value }))}
+                              placeholder="Ví dụ: BACARAT C04"
+                              className="form-input w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold mb-1 text-slate-600">Ghi chú (tuỳ chọn)</label>
+                            <input
+                              value={futureForm.note}
+                              onChange={e => setFutureForm(f => ({ ...f, note: e.target.value }))}
+                              placeholder="Thêm ghi chú nếu cần…"
+                              className="form-input w-full"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                          <button onClick={() => setShowFutureModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
+                          <button onClick={handleSendFuture} disabled={!futureForm.tableName.trim() || sendingFuture || (userData?.energy ?? 0) < 50} className="primary-btn px-4 py-2">
+                            {sendingFuture ? 'Đang gửi...' : 'Gửi Aquarius'}
+                          </button>
+                        </div>
+                      </Modal>
+                    </AnimatedPresence>
+        
                     <AnimatedPresence isVisible={showInfoModal}><Modal onClose={() => {}}><h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Yêu Cầu Khai Báo</h3><div className="space-y-4"><input value={infoFormData.f168Account} onChange={e => setInfoFormData({...infoFormData, f168Account: e.target.value})} type="text" placeholder="Tên TK F168" className="w-full form-input" /><input value={infoFormData.capital} onChange={e => setInfoFormData({...infoFormData, capital: e.target.value})} type="text" placeholder="Số vốn" className="w-full form-input" /><input value={infoFormData.target} onChange={e => setInfoFormData({...infoFormData, target: e.target.value})} type="text" placeholder="Muốn lên bao nhiêu" className="w-full form-input" /></div><div className="flex justify-end mt-6"><button onClick={handleInfoSubmit} className="primary-btn w-full">Gửi Báo Cáo</button></div></Modal></AnimatedPresence>
                     <AnimatedPresence isVisible={showImageModal}><Modal onClose={() => setShowImageModal(null)} size="3xl"><img src={showImageModal} className="w-full h-auto max-h-[80vh] object-contain rounded-lg"/><div className="text-center mt-4"><button onClick={() => setShowImageModal(null)} className="primary-btn">Đóng</button></div></Modal></AnimatedPresence>
                     <AnimatedPresence isVisible={showHistoryModal}><BlessingHistoryModal messages={messages} onClose={() => setShowHistoryModal(false)} currentUser={currentUser} /></AnimatedPresence>
-                    {/* Modal lựa chọn phong cách đánh */}
-                    <AnimatedPresence isVisible={showStyleModal}>
-                        <Modal onClose={() => setShowStyleModal(false)}>
-                            <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Lựa chọn phong cách đánh</h3>
-                            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-                                {STYLE_OPTIONS.map(option => (
-                                    <button
-                                        key={option}
-                                        onClick={() => setSelectedStyle(option)}
-                                        className={`w-full py-2 rounded-md font-semibold ${selectedStyle === option ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
-                                    >
-                                        {option}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex justify-end space-x-4 mt-4">
-                                <button onClick={() => setShowStyleModal(false)} className="secondary-btn px-4 py-2">Hủy</button>
-                                <button onClick={handleConfirmStyle} className="primary-btn px-4 py-2">Xác nhận</button>
-                            </div>
-                        </Modal>
-                    </AnimatedPresence>
                 </Fragment>
             );
         };
@@ -736,9 +802,6 @@
             const [messages, setMessages] = useState([]);
             const [inputMessage, setInputMessage] = useState('');
             const [uploadingImage, setUploadingImage] = useState(false);
-            // Thêm trạng thái theo dõi tiến trình và lỗi cho việc tải ảnh
-            const [uploadProgress, setUploadProgress] = useState(0);
-            const [uploadError, setUploadError] = useState('');
             const [onlineUsers, setOnlineUsers] = useState([]);
             const [showBroadcastModal, setShowBroadcastModal] = useState(false);
             const [broadcastMessage, setBroadcastMessage] = useState('');
@@ -746,6 +809,11 @@
             const [editingMsg, setEditingMsg] = useState({ id: null, text: '' });
             const [warningInput, setWarningInput] = useState('');
             const [emergencyInput, setEmergencyInput] = useState('');
+            // === FUTURE GRID – STATE ===
+            const [showGridModal, setShowGridModal] = useState(false);
+            const [gridInfo, setGridInfo] = useState({ lobby: 'DG', tableName: '' });
+            const [gridData, setGridData] = useState(Array(6).fill(0).map(()=>Array(12).fill(null)));
+    
             const [systemStatus, setSystemStatus] = useState({ isOnline: true, message: '' });
             const messagesEndRef = useRef(null);
             const imageInputRef = useRef(null);
@@ -784,42 +852,11 @@
             useEffect(() => { const statusRef = ref(rtdb, 'status'); const unsub = onValue(statusRef, (snapshot) => { const users = []; snapshot.forEach((childSnapshot) => { const user = childSnapshot.val(); if (user.isOnline) { users.push({ uid: childSnapshot.key, ...user }); } }); setOnlineUsers(users); }); return () => unsub(); }, []);
             const handleTyping = (e) => { setInputMessage(e.target.value); if (!currentChat) return; const typingRef = ref(rtdb, `typing_status/${currentChat.id}/admin`); set(typingRef, { isTyping: e.target.value.length > 0 }); };
             const handleImageUpload = async (event) => {
-                // Nâng cấp quá trình gửi ảnh với theo dõi tiến độ và xử lý lỗi
-                if (!currentChat) return;
-                const file = event.target.files[0];
-                if (!file) return;
-                setUploadingImage(true);
-                setUploadError('');
-                const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`;
-                const fileRef = storageRef(storage, filePath);
-                try {
-                    const uploadTask = uploadBytesResumable(fileRef, file);
-                    uploadTask.on('state_changed', (snapshot) => {
-                        // Cập nhật % tiến độ
-                        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                        setUploadProgress(progress);
-                    }, (error) => {
-                        // Bắt lỗi và hiển thị
-                        console.error("Lỗi tải lên hình ảnh:", error);
-                        sfx.error();
-                        setUploadError('Lỗi tải lên hình ảnh');
-                        setUploadingImage(false);
-                    }, async () => {
-                        // Khi tải xong thành công, gửi tin nhắn ảnh cho người dùng
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        await handleSendMessage('image', { url: downloadURL });
-                        setUploadingImage(false);
-                        setUploadProgress(0);
-                        if (imageInputRef.current) {
-                            imageInputRef.current.value = "";
-                        }
-                    });
-                } catch (error) {
-                    console.error("Lỗi tải lên hình ảnh:", error);
-                    sfx.error();
-                    setUploadError('Lỗi tải lên hình ảnh');
-                    setUploadingImage(false);
-                }
+                if (!currentChat) return; const file = event.target.files[0]; if (!file) return; setUploadingImage(true);
+                const filePath = `chat_images/${currentChat.id}/${Date.now()}_${file.name}`; const fileRef = storageRef(storage, filePath);
+                try { const snapshot = await uploadBytes(fileRef, file); const downloadURL = await getDownloadURL(snapshot.ref); await handleSendMessage('image', { url: downloadURL }); } 
+                catch (error) { console.error("Lỗi tải lên hình ảnh:", error); sfx.error(); } 
+                finally { setUploadingImage(false); if (imageInputRef.current) { imageInputRef.current.value = ""; } }
             };
             const handleSendMessage = async (type = 'text', content = null) => {
                 if (!currentChat) return; const textContent = inputMessage.trim(); if (type === 'text' && textContent === '') return;
@@ -851,6 +888,40 @@
             };
             const handleSendWarning = () => { if (!warningInput.trim() || !currentChat) return; handleSendMessage('warning', { text: warningInput.trim() }); setWarningInput(''); };
             const handleSendEmergency = () => { if (!emergencyInput.trim() || !currentChat) return; sfx.error(); handleSendMessage('emergency', { text: emergencyInput.trim() }); setEmergencyInput(''); };
+            // === FUTURE GRID – HELPERS ===
+            const cycleCell = (r, c) => {
+                setGridData(prev => {
+                    const g = prev.map(row => [...row]);
+                    const v = g[r][c];
+                    if (v === null) g[r][c] = 'P';
+                    else if (v === 'P') g[r][c] = 'B';
+                    else g[r][c] = null;
+                    return g;
+                });
+            };
+            const clearCell = (r, c) => {
+                setGridData(prev => {
+                    const g = prev.map(row => [...row]);
+                    g[r][c] = null;
+                    return g;
+                });
+            };
+            const sendFutureGrid = async () => {
+                if (!currentChat) return;
+                if (!gridInfo.tableName.trim()) { sfx.error(); return; }
+                try {
+                    sfx.confirm();
+                    const _rows = gridData.length; const _cols = gridData[0]?.length || 0; const _cells = []; for (let r=0;r<_rows;r++){ for(let c=0;c<_cols;c++){ _cells.push(gridData[r][c] ?? null); } }
+                    await addDoc(collection(db, 'user_chats', currentChat.id, 'messages'), { type: 'future_grid', content: { lobby: gridInfo.lobby, tableName: gridInfo.tableName.trim(), grid: { rows: _rows, cols: _cols, cells: _cells } },
+                        senderId: currentUser.uid,
+                        timestamp: serverTimestamp(),
+                        reactions: {}
+                    });
+                    await updateDoc(doc(db, 'user_chats', currentChat.id), { lastUpdate: serverTimestamp(), isRead: true });
+                    setShowGridModal(false);
+                } catch (e) { console.error(e); sfx.error(); }
+            };
+        
             return (
                  <Fragment>
                     <div className="h-full w-full flex items-center justify-center p-4">
@@ -887,33 +958,51 @@
                                         <header className="p-4 border-b border-[var(--border-color)] flex-shrink-0 bg-white"><h2 className="text-xl font-bold text-slate-800">Kênh: {currentChat.username}</h2></header>
                                         <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">{messages.map(msg => <MessageRenderer key={msg.id} msg={msg} currentUser={currentUser} viewType="admin" editingMsg={editingMsg} onStartEdit={handleStartEdit} onSaveEdit={handleSaveEdit} onCancelEdit={handleCancelEdit} onUpdateEditingText={(text) => setEditingMsg({...editingMsg, text})} />)}<div ref={messagesEndRef} /></main>
                                         <footer className="p-4 border-t border-[var(--border-color)] flex-shrink-0 bg-white space-y-3">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">BÁO BÀN:</span><select value={selectedTable} onChange={e => setSelectedTable(e.target.value)} className="form-input text-sm py-1 px-2 w-full">{BACARAT_TABLES.map(table => <option key={table} value={table}>{table}</option>)}</select><button onClick={() => handleSendMessage('table_announcement', { table: selectedTable })} className="secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50">Xác Nhận</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">DỰ ĐOÁN:</span><button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Con', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50 font-bold">Con</button><button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Cái', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50 font-bold">Cái</button><button onClick={() => handleSendMessage('prediction', { prediction: 'Hoà', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Hoà</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">PHẢN HỒI:</span><button onClick={() => handleSendMessage('result', { result: 'Thắng' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Thắng!</button><button onClick={() => handleSendMessage('result', { result: 'Thua' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Thua!</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">HỆ THỐNG:</span><button onClick={() => handleSendMessage('wait', { text: 'Xin vui lòng đợi trong giây lát.'})} className="flex-1 secondary-btn text-xs px-2 py-1">Đợi lát</button></div></div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">BÁO BÀN:</span><select value={selectedTable} onChange={e => setSelectedTable(e.target.value)} className="form-input text-sm py-1 px-2 w-full">{BACARAT_TABLES.map(table => <option key={table} value={table}>{table}</option>)}</select><button onClick={() => handleSendMessage('table_announcement', { table: selectedTable })} className="secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50">Xác Nhận</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">DỰ ĐOÁN:</span><button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Con', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-blue-500 text-blue-600 hover:bg-blue-50 font-bold">Con</button><button onClick={() => handleSendMessage('prediction', { prediction: 'Nhà Cái', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50 font-bold">Cái</button><button onClick={() => handleSendMessage('prediction', { prediction: 'Hoà', table: selectedTable })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Hoà</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">PHẢN HỒI:</span><button onClick={() => handleSendMessage('result', { result: 'Thắng' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-green-500 text-green-600 hover:bg-green-50">Thắng!</button><button onClick={() => handleSendMessage('result', { result: 'Thua' })} className="flex-1 secondary-btn text-xs px-2 py-1 border-red-500 text-red-600 hover:bg-red-50">Thua!</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">VẼ CẦU:</span><button onClick={() => setShowGridModal(true)} className="secondary-btn text-xs px-2 py-1 border-slate-400 hover:bg-slate-50">Mở bảng</button></div><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-400 w-20">HỆ THỐNG:</span><button onClick={() => handleSendMessage('wait', { text: 'Xin vui lòng đợi trong giây lát.'})} className="flex-1 secondary-btn text-xs px-2 py-1">Đợi lát</button></div></div>
                                             <div className="flex items-center gap-2 pt-3 border-t border-slate-200"><span className="text-xs font-bold text-slate-400 w-20">CẢNH BÁO:</span><input type="text" value={warningInput} onChange={e => setWarningInput(e.target.value)} placeholder="Nội dung cảnh báo tùy chỉnh..." className="form-input text-sm py-1 px-2 w-full" /><button onClick={handleSendWarning} disabled={!warningInput.trim()} className="secondary-btn text-xs px-4 py-2 border-amber-500 text-amber-600 hover:bg-amber-50">Gửi</button></div>
                                             <div className="flex items-center gap-2 pt-3 border-t border-red-200"><span className="text-xs font-bold text-red-600 w-20">TIN KHẨN:</span><input type="text" value={emergencyInput} onChange={e => setEmergencyInput(e.target.value)} placeholder="Nội dung khẩn cấp..." className="form-input text-sm py-1 px-2 w-full focus:border-red-500" /><button onClick={handleSendEmergency} disabled={!emergencyInput.trim()} className="primary-btn text-xs px-4 py-2" style={{'--primary-color': 'var(--danger-color)'}}>GỬI KHẨN</button></div>
-                                            <div className="flex items-center space-x-2 pt-3 border-t border-slate-200">
-                                                <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
-                                                <button onClick={() => imageInputRef.current.click()} disabled={uploadingImage} className="secondary-btn p-2.5">
-                                                    {uploadingImage ? (
-                                                        <svg className="animate-spin h-5 w-5 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                        </svg>
-                                                    ) : (
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                    )}
-                                                </button>
-                                                <input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" />
-                                                <button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button>
-                                            </div>
-                                            {uploadingImage && (
-                                                <div className="mt-1 text-xs text-slate-600">Đang tải hình ảnh: {uploadProgress}%</div>
-                                            )}
-                                            {uploadError && (
-                                                <div className="mt-1 text-xs text-red-600">{uploadError}</div>
-                                            )}
+                                            <div className="flex items-center space-x-2 pt-3 border-t border-slate-200"><input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} style={{ display: 'none' }} /><button onClick={() => imageInputRef.current.click()} disabled={uploadingImage} className="secondary-btn p-2.5">{uploadingImage ? <svg className="animate-spin h-5 w-5 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}</button><input value={inputMessage} onChange={handleTyping} onKeyPress={e => { if(e.key === 'Enter') handleSendMessage() }} type="text" placeholder="Phản hồi..." className="w-full form-input" /><button onClick={() => handleSendMessage()} className="primary-btn px-6">Gửi</button></div>
                                         </footer>
+                                        {/* FUTURE GRID – MODAL */}
+                                        <AnimatedPresence isVisible={showGridModal}>
+                                          <Modal onClose={() => setShowGridModal(false)} size="3xl">
+                                            <h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Vẽ Cầu</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                              <div>
+                                                <label className="block text-sm font-semibold mb-1 text-slate-600">Sảnh</label>
+                                                <select value={gridInfo.lobby} onChange={e=>setGridInfo(v=>({...v, lobby:e.target.value}))} className="form-input w-full">
+                                                  <option value="DG">DG</option>
+                                                  <option value="SEXY">SEXY</option>
+                                                </select>
+                                              </div>
+                                              <div className="md:col-span-2">
+                                                <label className="block text-sm font-semibold mb-1 text-slate-600">Tên bàn</label>
+                                                <input value={gridInfo.tableName} onChange={e=>setGridInfo(v=>({...v, tableName:e.target.value}))} className="form-input w-full" placeholder="Ví dụ: BACARAT C04" />
+                                              </div>
+                                            </div>
+                                            <div className="overflow-auto max-h-[60vh]">
+                                              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridData[0]?.length || 12}, 20px)` }}>
+                                                {gridData.flatMap((row, r) =>
+                                                  row.map((cell, c) => (
+                                                    <div key={`${r}-${c}`}
+                                                         onClick={() => cycleCell(r,c)}
+                                                         onContextMenu={(e)=>{e.preventDefault(); clearCell(r,c);}}
+                                                         style={{ width: '22px', height: '22px', border: '1px solid #e5e7eb', cursor: 'pointer',
+                                                                  borderRadius: '9999px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                  backgroundColor: cell === 'P' ? '#2563eb' : (cell === 'B' ? '#dc2626' : 'white'),
+                                                                  color: (cell === 'P' || cell === 'B') ? 'white' : 'transparent', fontSize: '12px', fontWeight: 700 }}
+                                                    />
+                                                  ))
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex justify-end gap-3 mt-4">
+                                              <button onClick={()=>setShowGridModal(false)} className="secondary-btn px-4 py-2">Đóng</button>
+                                              <button onClick={sendFutureGrid} className="primary-btn px-4 py-2">Gửi cho User</button>
+                                            </div>
+                                          </Modal>
+                                        </AnimatedPresence>
+        
                                     </Fragment>
                                ) : (
                                     <div className="flex-1 flex flex-col items-center justify-center text-slate-400 space-y-4"><svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg><p className="text-xl">Chọn một kênh liên lạc để bắt đầu</p></div>
@@ -945,10 +1034,13 @@
                         const userDocRef = doc(db, "users", user.uid);
                         const userDocSnap = await getDoc(userDocRef);
                         if (userDocSnap.exists()) {
-                            const userData = userDocSnap.data();
+                            const raw = userDocSnap.data();
+                            const fallbackUsername = (user.email || '').split('@')[0] || 'user';
+                            const username = raw?.username || fallbackUsername;
+                            const avatarUrl = raw?.avatarUrl || `https://placehold.co/96x96/e2e8f0/64748b?text=${username.charAt(0).toUpperCase()}`;
                             const userStatusRef = ref(rtdb, '/status/' + user.uid);
-                            const isOnline = { isOnline: true, lastSeen: rtdbServerTimestamp(), username: userData.username, avatarUrl: userData.avatarUrl };
-                            const isOffline = { isOnline: false, lastSeen: rtdbServerTimestamp(), username: userData.username, avatarUrl: userData.avatarUrl };
+                            const isOnline = { isOnline: true, lastSeen: rtdbServerTimestamp(), username, avatarUrl };
+                            const isOffline = { isOnline: false, lastSeen: rtdbServerTimestamp(), username, avatarUrl };
                             onValue(ref(rtdb, '.info/connected'), (snapshot) => {
                                 if (snapshot.val() === false) return;
                                 onDisconnect(userStatusRef).set(isOffline).then(() => set(userStatusRef, isOnline));
