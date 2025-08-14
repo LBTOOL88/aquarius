@@ -28,15 +28,17 @@
 
     <style>
         :root {
-            --primary-color: #2563eb; /* Blue 600 */
-            --secondary-color: #db2777; /* Pink 600 */
-            --warning-color: #f59e0b; /* Amber 500 */
-            --danger-color: #dc2626; /* Red 600 */
-            --success-color: #16a34a; /* Green 600 */
-            --bg-color: #f1f5f9; /* Slate 100 */
-            --text-color: #1e293b; /* Slate 800 */
-            --border-color: rgba(30, 41, 59, 0.2);
-        }
+        --primary-color: #22d3ee; /* Cyan 400 */
+        --secondary-color: #06b6d4; /* Cyan 500 */
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --success-color: #10b981;
+        --bg-color: #0e0f11;      /* Charcoal */
+        --panel-color: #1a1c20;   /* Dark panel */
+        --text-color: #e6e7eb;    /* Light text */
+        --muted-text: #a8b3c7;
+        --border-color: rgba(34, 211, 238, 0.25); /* cyan glow */
+    }
 
         html, body, #root {
             height: 100%;
@@ -63,18 +65,24 @@
         }
 
         .ui-frame {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 30px -15px rgba(0,0,0,0.1);
-            padding: 1rem;
-        }
+        background: rgba(26, 28, 32, 0.9);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        box-shadow: 0 20px 40px -20px rgba(2, 132, 199, 0.25);
+        padding: 1rem;
+    }
         @media (min-width: 640px) {
             .ui-frame {
-                padding: 2rem;
-            }
+        background: rgba(26, 28, 32, 0.9);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        box-shadow: 0 20px 40px -20px rgba(2, 132, 199, 0.25);
+        padding: 1rem;
+    }
         }
         .ui-frame.no-padding { padding: 0; }
 
@@ -94,16 +102,23 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
         .primary-btn {
-            font-family: 'Orbitron', sans-serif;
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 15px -5px var(--primary-color);
-        }
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        border-radius: .875rem;
+        padding: .6rem 1rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+        color: #001014;
+        border: 1px solid rgba(34, 211, 238, 0.6);
+        box-shadow: 0 8px 24px -8px rgba(34,211,238,.45);
+        transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .primary-btn:hover { box-shadow: 0 12px 30px -10px rgba(34,211,238,.55); filter: brightness(1.05); }
+    .primary-btn:active { transform: translateY(1px) scale(.99); }
         .primary-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px -5px var(--primary-color);
@@ -169,7 +184,64 @@
             background-color: var(--success-color);
         }
         /* --- END: CSS cho công tắc --- */
+    
+        /* Signal composer */
+        .signal-composer { padding: 0.75rem; background: rgba(26, 28, 32, 0.9); border: 1px solid var(--border-color); border-radius: 1rem; }
+        .signal-input { min-height: 96px; padding: 0.85rem 1rem; font-size: 1.125rem; border-radius: 0.875rem; resize: vertical; }
+
+    
+/* === Highlighted Pilot name === */
+.pilot-name {
+  background: linear-gradient(90deg,#22d3ee,#60a5fa,#a78bfa,#f472b6,#f59e0b,#34d399,#22d3ee);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pilotShift 6s linear infinite;
+  text-shadow: 0 0 10px rgba(34,211,238,.35);
+  letter-spacing: .04em;
+}
+.pilot-name::after {
+  content: "";
+  display: block;
+  height: 2px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34,211,238,.9), rgba(167,139,250,.9), rgba(244,114,182,.9));
+  box-shadow: 0 0 16px rgba(34,211,238,.5);
+}
+@keyframes pilotShift { 0%{background-position:0% 50%} 100%{background-position:240% 50%} }
+
+/* === Multicolor animated Logo === */
+.logo-rainbow {
+  background: linear-gradient(90deg,#22d3ee,#60a5fa,#a78bfa,#f472b6,#f59e0b,#34d399,#22d3ee);
+  background-size: 320% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: logoShift 8s linear infinite;
+  filter: drop-shadow(0 2px 20px rgba(34,211,238,.25));
+}
+@keyframes logoShift { 0%{background-position:0% 50%} 100%{background-position:320% 50%} }
+
+    
+/* === Global font: Orbitron === */
+body, button, input, textarea, select, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 500;
+}
+
+    
+/* === Force input & textarea typing text color to black === */
+input, textarea {
+    color: black !important;
+}
+input::placeholder, textarea::placeholder {
+    color: rgba(0,0,0,0.4) !important;
+}
+
     </style>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -200,9 +272,9 @@
             positions[i * 3 + 1] = y;
             positions[i * 3 + 2] = z;
             const randomColor = Math.random();
-            if (randomColor > 0.66) color.set(0x2563eb);
-            else if (randomColor > 0.33) color.set(0xdb2777);
-            else color.set(0x4ade80);
+            if (randomColor > 0.66) color.set(0x7dd3fc);
+            else if (randomColor > 0.33) color.set(0xffffff);
+            else color.set(0x22d3ee);
             colors[i * 3] = color.r;
             colors[i * 3 + 1] = color.g;
             colors[i * 3 + 2] = color.b;
@@ -416,7 +488,7 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                     <path d="M7.5 14C8 13 9 12.5 10.5 12.5C12 12.5 13 13.5 14.5 13.5C16 13.5 17 12.5 17.5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     <path d="M7.5 17C8 16 9 15.5 10.5 15.5C12 15.5 13 16.5 14.5 16.5C16 16.5 17 15.5 17.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-                <h1 className="text-5xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V</h1>
+                <h1 className="text-5xl font-black font-orbitron"><span className="logo-rainbow">AQUARIUS V</span></h1>
                 <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono mt-2">SIÊU TRÍ TUỆ</p>
             </div>
         );
@@ -459,7 +531,7 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                                 <path d="M7.5 14C8 13 9 12.5 10.5 12.5C12 12.5 13 13.5 14.5 13.5C16 13.5 17 12.5 17.5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                                 <path d="M7.5 17C8 16 9 15.5 10.5 15.5C12 15.5 13 16.5 14.5 16.5C16 16.5 17 15.5 17.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                             </svg>
-                            <h1 className="text-4xl font-black text-[var(--text-color)] font-orbitron">AQUARIUS V</h1>
+                            <h1 className="text-4xl font-black font-orbitron"><span className="logo-rainbow">AQUARIUS V</span></h1>
                             <p className="text-[var(--primary-color)] tracking-[0.2em] font-bold font-tech-mono">SIÊU TRÍ TUỆ</p>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -716,7 +788,7 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                                             <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">{isUploadingAvatar ? <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : "Đổi"}</div>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h2 className="text-base sm:text-xl font-bold text-slate-800 truncate">PILOT: {currentUser.email.split('@')[0].toUpperCase()}</h2>
+                                            <h2 className="text-base sm:text-xl font-bold text-slate-800 truncate">PILOT: <span className="pilot-name">{currentUser.email.split('@')[0].toUpperCase()}</span></h2>
                                             <EnergyBar current={userData.energy} max={MAX_ENERGY} />
                                         </div>
                                     </div>
@@ -734,12 +806,15 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                                {isAdminTyping && <TypingIndicator />}
                                <div ref={messagesEndRef} />
                             </main>
-                            <footer className="p-2 sm:p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-2">
+                            
+                            <footer className="p-2 sm:p-4 flex-shrink-0 border-t border-[var(--border-color)] space-y-3">
                                 <div className="flex items-center space-x-2">
-                                    <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn p-2 sm:px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>{blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}</button>
+                                    <button onClick={() => setShowBlessingModal(true)} disabled={!!blessingCooldown} className="primary-btn p-2 sm:px-4 disabled:opacity-50" style={{'--primary-color': 'var(--secondary-color)'}}>
+                                        {blessingCooldown ? <span className="font-tech-mono text-xs">{blessingCooldown}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}
+                                    </button>
                                     <button
                                         onClick={() => setShowVipGate(true)}
-                                        className="relative flex items-center gap-2 p-2 sm:px-4 rounded-xl font-orbitron text-sm uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-[0.99] bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 text-slate-900"
+                                        className="relative flex items-center gap-2 p-2 sm:px-4 rounded-xl font-orbitron text-sm uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-[0.99] bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 text-black"
                                         style={{ letterSpacing: '0.06em' }}
                                     >
                                         <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/80">
@@ -748,11 +823,28 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                                         <span>Cầu tương lai</span>
                                         <span className="absolute -top-2 -right-2 text-[10px] font-black px-2 py-0.5 rounded-full bg-black/80 text-yellow-300 border border-yellow-400/50">VIP</span>
                                     </button>
-                                    <input value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => { sfx.typing.triggerAttack("C2"); if(e.key === 'Enter' && !sendDisabled) handleSendMessage() }} type="text" placeholder={systemStatus.isOnline ? "Gửi tín hiệu..." : "Hệ thống đang Offline"} className="w-full form-input text-base" disabled={!systemStatus.isOnline} />
-                                    <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-4 sm:px-6">{isSending ? '...' : 'Gửi'}</button>
                                 </div>
-                                <div className="text-center text-xs font-tech-mono text-slate-500 h-4">{ (userData?.messageCountToday || 0) < 2 ? `Lượt gửi miễn phí còn lại: ${2 - (userData?.messageCountToday || 0)}` : `Mỗi lần gửi tốn 7 năng lượng` }</div>
+                                <div className="signal-composer">
+                                    <textarea
+                                        value={inputMessage}
+                                        onChange={e => setInputMessage(e.target.value)}
+                                        onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !sendDisabled) handleSendMessage(); }}
+                                        placeholder={systemStatus.isOnline ? "Gửi tín hiệu... (Ctrl/Cmd + Enter để gửi)" : "Hệ thống đang Offline"}
+                                        className="w-full form-input signal-input" style={{backgroundColor:'white',color:'black',boxShadow:'inset 0 1px 2px rgba(0,0,0,.12)'}}
+                                        disabled={!systemStatus.isOnline}
+                                        rows="3"
+                                    />
+                                    <div className="flex items-center justify-between mt-2">
+                                        <div className="text-xs font-tech-mono text-slate-400">
+                                            {(userData?.messageCountToday || 0) < 2 ? `Miễn phí còn: ${2 - (userData?.messageCountToday || 0)}` : `Mỗi lần gửi tốn 7 năng lượng`}
+                                        </div>
+                                        <button onClick={handleSendMessage} disabled={sendDisabled} className="primary-btn px-4 sm:px-6">
+                                            {isSending ? '...' : 'Gửi'}
+                                        </button>
+                                    </div>
+                                </div>
                             </footer>
+    
                         </div>
                     </div>
                     <AnimatedPresence isVisible={showBlessingModal}><Modal onClose={() => setShowBlessingModal(false)}><h3 className="text-2xl font-bold text-center mb-4 text-slate-800">Thỉnh Cầu Ban Phước</h3><p className="text-center text-sm text-slate-500 mb-4">Chức năng này được dùng 1 lần mỗi 24 giờ và không tốn năng lượng.</p><textarea value={plea} onChange={e => setPlea(e.target.value)} className="w-full h-24 p-3 form-input" placeholder="Viết lời thỉnh cầu của bạn..."></textarea><div className="flex justify-end space-x-4 mt-4"><button onClick={() => setShowBlessingModal(false)} className="secondary-btn px-4 py-2">Hủy</button><button onClick={handleBlessingRequest} disabled={!plea.trim() || !!blessingCooldown} className="primary-btn px-4 py-2">Gửi</button></div></Modal></AnimatedPresence>
@@ -1130,5 +1222,21 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
 
         ReactDOM.createRoot(document.getElementById('root')).render(<System />);
     </script>
+
+    <audio id="bgm" src="Elden Ring Main Theme (The Final Battle) - EPIC VERSION (1).mp3" loop preload="auto"></audio>
+    <script>
+      (function(){
+        const bgm = document.getElementById('bgm');
+        if (!bgm) return;
+        bgm.volume = 0.25;
+        const tryPlay = () => { bgm.play().catch(()=>{}); };
+        // Start after first user interaction
+        window.addEventListener('click', tryPlay, { once: true });
+        window.addEventListener('keydown', tryPlay, { once: true });
+        // Also attempt after 3.5s splash ends
+        setTimeout(tryPlay, 3500);
+      })();
+    </script>
+
 </body>
 </html>
