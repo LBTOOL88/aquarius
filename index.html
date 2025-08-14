@@ -240,53 +240,112 @@ input::placeholder, textarea::placeholder {
     color: rgba(0,0,0,0.4) !important;
 }
 
-    
-/* === ADMIN THEME (simple, clear) === */
-.admin-theme {
-  --primary-color: #2563eb;
-  --secondary-color: #1d4ed8;
-  --success-color: #16a34a;
-  --warning-color: #d97706;
-  --danger-color:  #dc2626;
-
-  --bg-color:    #f8fafc;
-  --panel-color: #ffffff;
-  --text-color:  #0f172a;
-  --muted-text:  #475569;
-  --border-color: rgba(15, 23, 42, 0.12);
-}
-
-.admin-theme .ui-frame{
-  background: var(--panel-color);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border: 1px solid var(--border-color);
-  border-radius: 1rem;
-  box-shadow: 0 8px 24px -12px rgba(2, 6, 23, 0.12);
-}
-.admin-theme .primary-btn{
-  color: #fff;
-  background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
-  border: 1px solid rgba(37, 99, 235, 0.4);
-  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .25);
-}
-.admin-theme .secondary-btn{
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-}
-.admin-theme .secondary-btn:hover{ background-color: rgba(2,6,23,0.04); }
-
-.admin-theme .custom-scrollbar::-webkit-scrollbar-thumb{ background-color: #94a3b8; }
-
-.admin-theme .logo-rainbow,
-.admin-theme .pilot-name{ animation: none !important; filter: none !important; text-shadow: none !important; background: none !important; -webkit-background-clip: initial !important; color: var(--text-color) !important; }
-.admin-theme .flashing-warning,
-.admin-theme .flashing-danger-icon{ animation: none !important; }
-
-.admin-theme .signal-composer{ background: #fff; border-color: var(--border-color); }
-.admin-theme .form-input:focus{ border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18); }
-</style>
+    </style>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<!-- Admin Simple Theme -->
+<style id="admin-simple-theme">
+/* Root palette */
+.admin-theme {
+  --primary-color: #2563eb;      /* blue-600 */
+  --primary-color-2: #1d4ed8;    /* blue-700 */
+  --success-color: #16a34a;      /* green-600 */
+  --warning-color: #d97706;      /* amber-600 */
+  --danger-color:  #dc2626;      /* red-600 */
+
+  --bg-color: #f8fafc;           /* slate-50 */
+  --panel-color: #ffffff;        /* white */
+  --text-color: #0f172a;         /* slate-900 */
+  --muted-text: #475569;         /* slate-600 */
+  --border-color: rgba(15,23,42,.12);
+}
+
+/* General layout cleanup */
+.admin-theme body, .admin-theme .app-root, .admin-theme .root, .admin-theme .container {
+  background: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* Common cards/panels */
+.admin-theme .ui-frame,
+.admin-theme .card,
+.admin-theme .panel,
+.admin-theme .box,
+.admin-theme .sheet,
+.admin-theme .sidebar,
+.admin-theme .composer,
+.admin-theme .chat-window {
+  background: var(--panel-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px -12px rgba(2,6,23,.12) !important;
+  backdrop-filter: none !important;
+}
+
+/* Inputs */
+.admin-theme input,
+.admin-theme select,
+.admin-theme textarea {
+  background: #fff !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  outline: none !important;
+}
+.admin-theme input:focus,
+.admin-theme select:focus,
+.admin-theme textarea:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.18) !important;
+}
+
+/* Buttons */
+.admin-theme button,
+.admin-theme .btn {
+  border-radius: 12px !important;
+  border: 1px solid var(--border-color) !important;
+  background: #fff !important;
+  color: var(--text-color) !important;
+  cursor: pointer;
+}
+.admin-theme .primary-btn,
+.admin-theme .btn-primary {
+  color: #fff !important;
+  background: linear-gradient(180deg, var(--primary-color), var(--primary-color-2)) !important;
+  border: 1px solid rgba(37,99,235,.4) !important;
+  box-shadow: 0 8px 18px -8px rgba(37,99,235,.25) !important;
+}
+.admin-theme .success, .admin-theme .badge-success { color:#fff !important; background: var(--success-color) !important; }
+.admin-theme .warning, .admin-theme .badge-warning { color:#fff !important; background: var(--warning-color) !important; }
+.admin-theme .danger,  .admin-theme .badge-danger  { color:#fff !important; background: var(--danger-color) !important; }
+
+/* Reduce visual noise */
+.admin-theme * { text-shadow: none !important; }
+.admin-theme .glow, .admin-theme .neon, .admin-theme [class*="neon"], .admin-theme [style*="text-shadow"] {
+  text-shadow: none !important; filter: none !important;
+}
+.admin-theme .logo-rainbow, .admin-theme .pilot-name, .admin-theme .flashing-warning, .admin-theme .flashing-danger-icon {
+  animation: none !important;
+}
+
+/* Scrollbar */
+.admin-theme ::-webkit-scrollbar { width: 10px; height: 10px; }
+.admin-theme ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; }
+.admin-theme ::-webkit-scrollbar-track { background: transparent; }
+
+/* Chat bubbles neutralized */
+.admin-theme .bubble,
+.admin-theme .message,
+.admin-theme .chip {
+  border: 1px solid var(--border-color) !important;
+  background: #fff !important;
+  color: var(--text-color) !important;
+}
+
+/* Utility */
+.admin-theme .muted { color: var(--muted-text) !important; }
+</style>
+
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
@@ -1248,7 +1307,7 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
                 }
                 const isAdmin = currentUser.email.split('@')[0] === ADMIN_USERNAME;
                 return isAdmin 
-                    ? <div className="admin-theme"><AdminDashboard currentUser={currentUser} onLogout={handleLogout} /></div> 
+                    ? <AdminDashboard currentUser={currentUser} onLogout={handleLogout} /> 
                     : <UserView currentUser={currentUser} onLogout={handleLogout} />;
             };
 
@@ -1282,6 +1341,31 @@ case 'text': return <p className="whitespace-pre-wrap">{msg.text}</p>;
         setTimeout(tryPlay, 3500);
       })();
     </script>
+
+
+<!-- Safety patch: prevent full-page reloads -->
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  // Apply admin theme to whole page (simple)
+  document.body.classList.add('admin-theme');
+
+  // Prevent any form submit from reloading
+  document.querySelectorAll('form').forEach(f => {
+    f.addEventListener('submit', e => { e.preventDefault(); return false; });
+  });
+  // Default buttons to non-submit
+  document.querySelectorAll('button:not([type])').forEach(btn => btn.setAttribute('type','button'));
+  document.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(el => {
+    el.setAttribute('data-original-type','submit');
+    if (el.tagName === 'BUTTON') el.setAttribute('type','button');
+    if (el.tagName === 'INPUT')  el.setAttribute('type','button');
+  });
+  // Disable dead anchors
+  document.querySelectorAll('a[href="#"], a[href=""]').forEach(a => {
+    a.addEventListener('click', e => e.preventDefault());
+  });
+});
+</script>
 
 </body>
 </html>
